@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Top K Frequent Elements — Heap Visualizer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--blue:#58a6ff;--orange:#d29922;--green:#3fb950;--purple:#bc8cff;--red:#f85149}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.header{background:var(--panel);border-bottom:1px solid var(--border);padding:15px 20px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:18px;font-weight:600}
+.main{display:flex;flex:1;overflow:hidden}
+.left-panel{flex:1;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;gap:20px;overflow-y:auto}
+.right-panel{flex:1.5;padding:20px;background:#0d1117;display:flex;flex-direction:column;align-items:center;position:relative}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:15px}
+.card-title{font-size:12px;text-transform:uppercase;color:#8b949e;margin-bottom:10px;font-weight:600}
+.array-box{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.arr-el{padding:5px 10px;background:#21262d;border-radius:4px;font-family:monospace;border:1px solid transparent}
+.arr-el.active{border-color:var(--blue);background:rgba(88,166,255,0.15)}
+.hash-map{display:flex;flex-direction:column;gap:5px}
+.hm-row{display:flex;justify-content:space-between;background:#21262d;padding:8px 12px;border-radius:4px;font-family:monospace}
+.hm-row.updated{background:rgba(210,153,34,0.15);border-left:3px solid var(--orange)}
+.heap-container{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;position:relative}
+.heap-node{width:60px;height:60px;background:var(--panel);border:2px solid var(--blue);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:absolute;font-family:monospace;z-index:2;transition:all 0.4s}
+.heap-node .freq{font-size:16px;font-weight:bold;color:var(--blue)}
+.heap-node .val{font-size:10px;color:#8b949e}
+.heap-node.popping{border-color:var(--red);background:rgba(248,81,73,0.1);transform:scale(1.1) translateY(-20px);opacity:0;z-index:10}
+.heap-node.pushing{animation:popIn 0.4s}
+.heap-line{position:absolute;background:var(--border);height:2px;transform-origin:0 50%;z-index:1;transition:all 0.4s}
+.log-box{font-family:monospace;font-size:12px;color:#8b949e;display:flex;flex-direction:column;gap:5px;flex:1;width:100%;max-width:500px;margin-top:auto}
+.log-item.active{color:var(--text);border-left:2px solid var(--blue);padding-left:5px}
+.controls{padding:15px 20px;background:var(--panel);border-top:1px solid var(--border);display:flex;gap:10px;justify-content:center}
+button{padding:8px 16px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:6px;cursor:pointer;font-weight:600;transition:0.2s}
+button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+button.primary:hover:not(:disabled){background:#1f6feb}
+button:disabled{opacity:0.5;cursor:not-allowed}
+@keyframes popIn{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Top K Frequent Elements (Min-Heap)</h1>
+    <p style="font-size:12px;color:#8b949e;margin-top:4px">1. Count frequencies. 2. Push (freq, num) to Min-Heap. 3. If size > K, pop smallest.</p>
+  </div>
+  <a href="index.html" style="color:var(--blue);text-decoration:none;font-size:14px;font-weight:600">← Back to Dashboard</a>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="card">
+      <div class="card-title">Input Array (K = 2)</div>
+      <div class="array-box" id="arr-box"></div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-title">Frequency Map</div>
+      <div class="hash-map" id="hash-map"></div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div style="position:absolute;top:20px;left:20px;font-size:12px;color:#8b949e;text-transform:uppercase;font-weight:bold">Min-Heap (Size limit: 2)</div>
+    <div class="heap-container" id="heap-container"></div>
+    <div class="log-box" id="log-box"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btn-reset" onclick="init()">↺ Reset</button>
+  <button id="btn-next" class="primary" onclick="nextStep()">Next Step ▶</button>
+  <button id="btn-auto" onclick="toggleAuto()">▶▶ Auto Play</button>
+</div>
+
+<script>
+const nums = [1,1,1,2,2,3];
+const k = 2;
+let state = [];
+let stepIdx = 0;
+let autoTimer = null;
+
+function generateSteps() {
+  state = [];
+  let map = {};
+  
+  // Phase 1: Build map
+  for(let i=0; i<nums.length; i++) {
+    let n = nums[i];
+    map[n] = (map[n] || 0) + 1;
+    state.push({
+      phase: 1, idx: i, map: {...map}, heap: [], 
+      log: `Counted ${n}. Frequency map updated.`
+    });
+  }
+  
+  // Phase 2: Build heap
+  let heap = [];
+  let items = Object.entries(map).map(([num, freq]) => ({n:parseInt(num), f:freq}));
+  
+  state.push({
+    phase: 2, idx: -1, map: {...map}, heap: [...heap], 
+    log: `Frequency map complete. Now pushing to Min-Heap.`
+  });
+  
+  for(let item of items) {
+    heap.push(item);
+    // Sort to simulate min-heap (lowest frequency at index 0)
+    heap.sort((a,b) => a.f - b.f);
+    
+    state.push({
+      phase: 2, idx: -1, map: {...map}, heap: [...heap],
+      action: 'push', item: item,
+      log: `Pushed [num:${item.n}, freq:${item.f}] to Min-Heap.`
+    });
+    
+    if(heap.length > k) {
+      let popped = heap.shift(); // remove smallest freq
+      state.push({
+        phase: 2, idx: -1, map: {...map}, heap: [...heap],
+        action: 'pop', popped: popped,
+        log: `Heap size > K(${k}). Popped smallest frequency: [num:${popped.n}, freq:${popped.f}].`
+      });
+    }
+  }
+  
+  state.push({
+    phase: 3, idx: -1, map: {...map}, heap: [...heap], 
+    log: `Algorithm Complete! Top ${k} elements are in the heap.`
+  });
+}
+
+const nodePos = [
+  {x: 0, y: -60},    // root
+  {x: -80, y: 40},   // left child
+  {x: 80, y: 40}     // right child
+];
+
+function render() {
+  const s = state[stepIdx];
+  
+  // Render Array
+  document.getElementById("arr-box").innerHTML = nums.map((n, i) => 
+    `<div class="arr-el ${s.phase===1 && s.idx===i ? 'active' : ''}">${n}</div>`
+  ).join("");
+  
+  // Render Map
+  document.getElementById("hash-map").innerHTML = Object.entries(s.map).map(([num, freq]) => 
+    `<div class="hm-row ${s.phase===1 && nums[s.idx]==num ? 'updated' : ''}"><span>Key: ${num}</span><span>Freq: ${freq}</span></div>`
+  ).join("");
+  
+  // Render Heap
+  const heapEl = document.getElementById("heap-container");
+  heapEl.innerHTML = "";
+  
+  s.heap.forEach((item, i) => {
+    if(i > 2) return; // Visualizer only handles small heap tree
+    let node = document.createElement("div");
+    node.className = "heap-node" + (s.action==='push' && i===s.heap.length-1 ? ' pushing' : '');
+    node.style.transform = `translate(${nodePos[i].x}px, ${nodePos[i].y}px)`;
+    node.innerHTML = `<span class="freq">${item.f}</span><span class="val">num:${item.n}</span>`;
+    heapEl.appendChild(node);
+    
+    if(i > 0) { // draw line to parent
+      let pIdx = Math.floor((i-1)/2);
+      let dx = nodePos[i].x - nodePos[pIdx].x;
+      let dy = nodePos[i].y - nodePos[pIdx].y;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+      let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      
+      let line = document.createElement("div");
+      line.className = "heap-line";
+      line.style.width = (dist - 60) + "px"; // padding
+      line.style.transform = `translate(${nodePos[pIdx].x + dx/2}px, ${nodePos[pIdx].y + dy/2}px) rotate(${angle}deg)`;
+      heapEl.appendChild(line);
+    }
+  });
+  
+  if(s.action === 'pop' && s.popped) {
+    let node = document.createElement("div");
+    node.className = "heap-node popping";
+    node.style.transform = `translate(${nodePos[0].x}px, ${nodePos[0].y}px)`;
+    node.innerHTML = `<span class="freq">${s.popped.f}</span><span class="val">num:${s.popped.n}</span>`;
+    heapEl.appendChild(node);
+  }
+  
+  // Render Log
+  const logBox = document.getElementById("log-box");
+  logBox.innerHTML = state.slice(Math.max(0, stepIdx-5), stepIdx+1).map((st, i, arr) => 
+    `<div class="log-item ${i === arr.length-1 ? 'active' : ''}">${st.log}</div>`
+  ).join("");
+  logBox.scrollTop = logBox.scrollHeight;
+  
+  document.getElementById("btn-next").disabled = stepIdx >= state.length - 1;
+}
+
+function nextStep() {
+  if(stepIdx < state.length - 1) {
+    stepIdx++;
+    render();
+  } else if(autoTimer) {
+    toggleAuto();
+  }
+}
+
+function init() {
+  if(autoTimer) toggleAuto();
+  generateSteps();
+  stepIdx = 0;
+  render();
+}
+
+function toggleAuto() {
+  const btn = document.getElementById("btn-auto");
+  if(autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    btn.textContent = "▶▶ Auto Play";
+    btn.style.color = "var(--text)";
+  } else {
+    btn.textContent = "⏸ Pause";
+    btn.style.color = "var(--orange)";
+    autoTimer = setInterval(nextStep, 1000);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

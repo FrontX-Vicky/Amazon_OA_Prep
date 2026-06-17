@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3Sum — Two Pointers Visualizer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--blue:#58a6ff;--orange:#d29922;--green:#3fb950;--red:#f85149;--purple:#bc8cff}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.header{background:var(--panel);border-bottom:1px solid var(--border);padding:15px 20px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:18px;font-weight:600}
+.main{display:flex;flex:1;overflow:hidden;flex-direction:column}
+.array-panel{flex:1;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);padding:40px}
+.array-container{display:flex;gap:10px;position:relative}
+.element{width:50px;height:50px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:2px solid var(--border);background:#21262d;font-size:20px;font-weight:bold;font-family:monospace;transition:all 0.3s;position:relative}
+.pointer-label{position:absolute;top:-25px;font-size:12px;font-weight:bold;font-family:monospace;padding:2px 6px;border-radius:4px;opacity:0;transform:translateY(10px);transition:all 0.3s}
+.element.has-i .pointer-label.pi{opacity:1;transform:translateY(0);color:var(--purple);background:rgba(188,140,255,0.15)}
+.element.has-l .pointer-label.pl{opacity:1;transform:translateY(0);color:var(--orange);background:rgba(210,153,34,0.15);top:-45px}
+.element.has-r .pointer-label.pr{opacity:1;transform:translateY(0);color:var(--blue);background:rgba(88,166,255,0.15);top:-65px}
+.element.has-i{border-color:var(--purple);box-shadow:0 0 10px rgba(188,140,255,0.3)}
+.element.has-l{border-color:var(--orange);box-shadow:0 0 10px rgba(210,153,34,0.3)}
+.element.has-r{border-color:var(--blue);box-shadow:0 0 10px rgba(88,166,255,0.3)}
+.element.found{background:rgba(63,185,80,0.2);border-color:var(--green)}
+.element.skip{opacity:0.3}
+.info-row{display:flex;flex:1;overflow:hidden}
+.calc-panel{flex:1;padding:20px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.math-box{font-size:32px;font-family:monospace;font-weight:bold;background:var(--panel);padding:20px 40px;border-radius:12px;border:1px solid var(--border);display:flex;align-items:center;gap:15px}
+.math-box span.val-i{color:var(--purple)}
+.math-box span.val-l{color:var(--orange)}
+.math-box span.val-r{color:var(--blue)}
+.sum-result{padding:5px 15px;border-radius:8px;background:#21262d}
+.sum-result.zero{background:rgba(63,185,80,0.2);color:var(--green);border:1px solid var(--green)}
+.sum-result.neg{color:var(--red)}
+.sum-result.pos{color:var(--blue)}
+.res-panel{flex:1;padding:20px;display:flex;flex-direction:column;gap:15px;background:#0d1117;overflow-y:auto}
+.triplet-list{display:flex;flex-wrap:wrap;gap:10px}
+.triplet{padding:10px 15px;background:var(--panel);border:1px solid var(--green);border-radius:8px;font-family:monospace;font-size:16px;color:var(--green);animation:pop 0.3s}
+.log-box{font-family:monospace;font-size:12px;color:#8b949e;display:flex;flex-direction:column;gap:5px;flex:1}
+.log-item.active{color:var(--text);border-left:2px solid var(--blue);padding-left:5px}
+.controls{padding:15px 20px;background:var(--panel);border-top:1px solid var(--border);display:flex;gap:10px;justify-content:center}
+button{padding:8px 16px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:6px;cursor:pointer;font-weight:600;transition:0.2s}
+button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+button.primary:hover:not(:disabled){background:#1f6feb}
+button:disabled{opacity:0.5;cursor:not-allowed}
+@keyframes pop{0%{transform:scale(0.8)}100%{transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>3Sum (Two Pointers)</h1>
+    <p style="font-size:12px;color:#8b949e;margin-top:4px">Sort array. Fix `i`, use `left` and `right` pointers to find sum == 0. Skip duplicates.</p>
+  </div>
+  <a href="index.html" style="color:var(--blue);text-decoration:none;font-size:14px;font-weight:600">← Back to Dashboard</a>
+</div>
+
+<div class="main">
+  <div class="array-panel">
+    <div class="array-container" id="array-container"></div>
+  </div>
+  <div class="info-row">
+    <div class="calc-panel">
+      <div style="font-size:12px;color:#8b949e;text-transform:uppercase;margin-bottom:15px;font-weight:bold">Current Evaluation</div>
+      <div class="math-box" id="math-box">
+        <span class="val-i" id="val-i">_</span> + 
+        <span class="val-l" id="val-l">_</span> + 
+        <span class="val-r" id="val-r">_</span> = 
+        <span class="sum-result" id="val-sum">?</span>
+      </div>
+      <div id="action-hint" style="margin-top:20px;font-size:14px;color:#8b949e;font-family:monospace"></div>
+    </div>
+    <div class="res-panel">
+      <div style="font-size:12px;color:#8b949e;text-transform:uppercase;font-weight:bold">Found Triplets</div>
+      <div class="triplet-list" id="triplet-list"></div>
+      <div style="font-size:12px;color:#8b949e;text-transform:uppercase;font-weight:bold;margin-top:10px">Execution Log</div>
+      <div class="log-box" id="log-box"></div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btn-reset" onclick="init()">↺ Reset</button>
+  <button id="btn-next" class="primary" onclick="nextStep()">Next Step ▶</button>
+  <button id="btn-auto" onclick="toggleAuto()">▶▶ Auto Play</button>
+</div>
+
+<script>
+const nums = [-4, -1, -1, 0, 1, 2]; // Pre-sorted for simplicity in visualizer
+let state = [];
+let stepIdx = 0;
+let autoTimer = null;
+
+function generateSteps() {
+  state = [];
+  let res = [];
+  
+  state.push({i:-1, l:-1, r:-1, sum:null, res:[...res], log:"Array sorted. Starting iteration.", action:"Setup"});
+  
+  for(let i=0; i<nums.length-2; i++) {
+    if(nums[i] > 0) {
+      state.push({i, l:-1, r:-1, sum:null, res:[...res], log:`nums[${i}] = ${nums[i]} > 0. Breaking loop early because sum cannot be 0.`, action:"Break", skipI:true});
+      break;
+    }
+    if(i > 0 && nums[i] === nums[i-1]) {
+      state.push({i, l:-1, r:-1, sum:null, res:[...res], log:`nums[${i}] == nums[${i-1}]. Skipping duplicate i.`, action:"Skip Duplicate", skipI:true});
+      continue;
+    }
+    
+    let l = i + 1;
+    let r = nums.length - 1;
+    state.push({i, l, r, sum:null, res:[...res], log:`Fixed i=${i} (${nums[i]}). Set left=${l}, right=${r}.`, action:"Initialize Pointers"});
+    
+    while(l < r) {
+      let sum = nums[i] + nums[l] + nums[r];
+      let act = "";
+      if(sum < 0) act = "Sum < 0. Need larger value. left++";
+      else if(sum > 0) act = "Sum > 0. Need smaller value. right--";
+      else act = "Sum == 0! Triplet found.";
+      
+      state.push({i, l, r, sum, res:[...res], log:`Evaluating: ${nums[i]} + ${nums[l]} + ${nums[r]} = ${sum}. ${act}`, action:sum<0?"Increment Left":sum>0?"Decrement Right":"Found Triplet!"});
+      
+      if(sum < 0) {
+        l++;
+      } else if(sum > 0) {
+        r--;
+      } else {
+        res.push([nums[i], nums[l], nums[r]]);
+        state.push({i, l, r, sum, res:[...res], log:`Added [${nums[i]}, ${nums[l]}, ${nums[r]}] to results.`, action:"Save Triplet", found:true});
+        l++;
+        while(nums[l] === nums[l-1] && l < r) {
+          state.push({i, l, r, sum:null, res:[...res], log:`nums[${l}] == nums[${l-1}]. Skipping duplicate left.`, action:"Skip Left Duplicate"});
+          l++;
+        }
+      }
+    }
+  }
+  state.push({i:-1, l:-1, r:-1, sum:null, res:[...res], log:"Algorithm Complete.", action:"Done"});
+}
+
+function render() {
+  const s = state[stepIdx];
+  const arrEl = document.getElementById("array-container");
+  arrEl.innerHTML = nums.map((n, idx) => `
+    <div class="element ${s.i===idx?'has-i':''} ${s.l===idx?'has-l':''} ${s.r===idx?'has-r':''} ${s.skipI&&s.i===idx?'skip':''} ${s.found&&(s.i===idx||s.l===idx||s.r===idx)?'found':''}">
+      <div class="pointer-label pi">i</div>
+      <div class="pointer-label pl">L</div>
+      <div class="pointer-label pr">R</div>
+      ${n}
+    </div>
+  `).join("");
+  
+  const vi = document.getElementById("val-i");
+  const vl = document.getElementById("val-l");
+  const vr = document.getElementById("val-r");
+  const vs = document.getElementById("val-sum");
+  
+  vi.textContent = s.i >= 0 ? nums[s.i] : "_";
+  vl.textContent = s.l >= 0 ? nums[s.l] : "_";
+  vr.textContent = s.r >= 0 ? nums[s.r] : "_";
+  
+  if(s.sum !== null) {
+    vs.textContent = s.sum;
+    vs.className = "sum-result " + (s.sum === 0 ? "zero" : s.sum < 0 ? "neg" : "pos");
+  } else {
+    vs.textContent = "?";
+    vs.className = "sum-result";
+  }
+  
+  document.getElementById("action-hint").textContent = s.action || "";
+  
+  const tList = document.getElementById("triplet-list");
+  if(s.res.length === 0) tList.innerHTML = '<span style="color:#484f58;font-family:monospace">None found yet</span>';
+  else tList.innerHTML = s.res.map(t => `<div class="triplet">[${t.join(', ')}]</div>`).join("");
+  
+  const logBox = document.getElementById("log-box");
+  logBox.innerHTML = state.slice(Math.max(0, stepIdx-6), stepIdx+1).map((st, i, arr) => 
+    `<div class="log-item ${i === arr.length-1 ? 'active' : ''}">${st.log}</div>`
+  ).join("");
+  logBox.scrollTop = logBox.scrollHeight;
+  
+  document.getElementById("btn-next").disabled = stepIdx >= state.length - 1;
+}
+
+function nextStep() {
+  if(stepIdx < state.length - 1) {
+    stepIdx++;
+    render();
+  } else if(autoTimer) {
+    toggleAuto();
+  }
+}
+
+function init() {
+  if(autoTimer) toggleAuto();
+  generateSteps();
+  stepIdx = 0;
+  render();
+}
+
+function toggleAuto() {
+  const btn = document.getElementById("btn-auto");
+  if(autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    btn.textContent = "▶▶ Auto Play";
+    btn.style.color = "var(--text)";
+  } else {
+    btn.textContent = "⏸ Pause";
+    btn.style.color = "var(--orange)";
+    autoTimer = setInterval(nextStep, 800);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

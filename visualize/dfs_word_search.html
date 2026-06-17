@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Search — DFS Backtracking Visualizer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--blue:#58a6ff;--orange:#d29922;--green:#3fb950;--red:#f85149;--purple:#bc8cff;--path:#d2a8ff;--active:#1f6feb}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.header{background:var(--panel);border-bottom:1px solid var(--border);padding:15px 20px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:18px;font-weight:600}
+.main{display:flex;flex:1;overflow:hidden}
+.grid-panel{flex:1.5;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--border)}
+.grid{display:grid;gap:5px;position:relative}
+.cell{width:60px;height:60px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:bold;font-size:24px;font-family:monospace;background:#21262d;border:2px solid var(--border);transition:all 0.3s;color:#8b949e}
+.cell.in-path{background:rgba(188,140,255,0.2);border-color:var(--purple);color:var(--purple);transform:scale(1.05)}
+.cell.active{background:var(--active);border-color:var(--blue);color:#fff;transform:scale(1.1);box-shadow:0 0 15px var(--blue);z-index:10}
+.cell.fail{background:rgba(248,81,73,0.2);border-color:var(--red);color:var(--red)}
+.cell.found{background:rgba(63,185,80,0.2);border-color:var(--green);color:var(--green)}
+.word-target{font-size:24px;font-family:monospace;font-weight:bold;letter-spacing:5px;margin-bottom:20px;background:#21262d;padding:10px 20px;border-radius:8px;border:1px solid var(--border)}
+.word-target span{transition:color 0.3s}
+.word-target span.match{color:var(--green)}
+.info-panel{flex:1;padding:20px;display:flex;flex-direction:column;gap:20px;background:#0d1117;overflow-y:auto}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:15px}
+.card-title{font-size:12px;text-transform:uppercase;color:#8b949e;margin-bottom:10px;font-weight:600}
+.stack-box{display:flex;flex-direction:column-reverse;gap:5px;min-height:50px;max-height:150px;overflow-y:auto;background:#21262d;padding:10px;border-radius:6px}
+.stack-item{background:var(--purple);color:#fff;padding:6px 10px;border-radius:4px;font-family:monospace;font-size:12px;animation:slideUp 0.2s}
+.log-box{font-family:monospace;font-size:12px;color:#8b949e;display:flex;flex-direction:column;gap:5px;flex:1}
+.log-item.active{color:var(--text);border-left:2px solid var(--purple);padding-left:5px}
+.controls{padding:15px 20px;background:var(--panel);border-top:1px solid var(--border);display:flex;gap:10px;justify-content:center}
+button{padding:8px 16px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:6px;cursor:pointer;font-weight:600;transition:0.2s}
+button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+button.primary:hover:not(:disabled){background:#1f6feb}
+button:disabled{opacity:0.5;cursor:not-allowed}
+@keyframes slideUp{0%{transform:translateY(10px);opacity:0}100%{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Word Search (DFS & Backtracking)</h1>
+    <p style="font-size:12px;color:#8b949e;margin-top:4px">Explore paths using DFS. If character matches, add to path. If path fails, backtrack (remove from path).</p>
+  </div>
+  <a href="index.html" style="color:var(--blue);text-decoration:none;font-size:14px;font-weight:600">← Back to Dashboard</a>
+</div>
+
+<div class="main">
+  <div class="grid-panel">
+    <div class="word-target" id="word-target"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="info-panel">
+    <div class="card">
+      <div class="card-title">Call Stack (Recursion)</div>
+      <div class="stack-box" id="stack-box"></div>
+    </div>
+    <div class="card" style="flex:1;display:flex;flex-direction:column">
+      <div class="card-title">Execution Log</div>
+      <div class="log-box" id="log-box"></div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btn-reset" onclick="init()">↺ Reset</button>
+  <button id="btn-next" class="primary" onclick="nextStep()">Next Step ▶</button>
+  <button id="btn-auto" onclick="toggleAuto()">▶▶ Auto Play</button>
+</div>
+
+<script>
+const rawGrid = [
+  ["A","B","C","E"],
+  ["S","F","C","S"],
+  ["A","D","E","E"]
+];
+const targetWord = "ABCE";
+const targetChars = targetWord.split("");
+
+let rows, cols;
+let state = [];
+let stepIdx = 0;
+let autoTimer = null;
+
+function generateSteps() {
+  state = [];
+  rows = rawGrid.length;
+  cols = rawGrid[0].length;
+  let path = []; // store string `${r},${c}`
+  let stack = [];
+  let found = false;
+
+  function dfs(r, c, i) {
+    stack.push(`dfs(r:${r}, c:${c}, i:${i})`);
+    
+    // Check bounds & path
+    if (r < 0 || c < 0 || r >= rows || c >= cols || path.includes(`${r},${c}`)) {
+      state.push({ r, c, i, path: [...path], stack: [...stack], fail: true, log: `Out of bounds or already in path at (${r},${c}).` });
+      stack.pop();
+      return false;
+    }
+    
+    // Check match
+    if (rawGrid[r][c] !== targetWord[i]) {
+      state.push({ r, c, i, path: [...path], stack: [...stack], fail: true, log: `Mismatch: grid '${rawGrid[r][c]}' != target '${targetWord[i]}'.` });
+      stack.pop();
+      return false;
+    }
+
+    // Match!
+    path.push(`${r},${c}`);
+    state.push({ r, c, i, path: [...path], stack: [...stack], match: true, log: `Match found for '${targetWord[i]}' at (${r},${c}). Added to path.` });
+
+    if (i === targetWord.length - 1) {
+      state.push({ r, c, i, path: [...path], stack: [...stack], done: true, log: `Word completely found!` });
+      return true;
+    }
+
+    // Recursive calls (Right, Down, Left, Up)
+    state.push({ r, c, i, path: [...path], stack: [...stack], match: true, log: `Exploring neighbors of (${r},${c})...` });
+    
+    let res = dfs(r, c+1, i+1) || dfs(r+1, c, i+1) || dfs(r, c-1, i+1) || dfs(r-1, c, i+1);
+    
+    if (res) return true;
+
+    // Backtrack
+    let removed = path.pop();
+    state.push({ r, c, i, path: [...path], stack: [...stack], backtrack: true, log: `All neighbors failed. Backtracking: removing (${removed}) from path.` });
+    
+    stack.pop();
+    return false;
+  }
+
+  state.push({ r: -1, c: -1, i: 0, path: [], stack: [], log: `Starting Word Search for "${targetWord}".` });
+
+  // Start from 0,0 for visualizer simplicity
+  dfs(0, 0, 0);
+
+  if(!state[state.length-1].done) {
+     state.push({ r: -1, c: -1, i: 0, path: [], stack: [], done: true, log: `Algorithm Finished.` });
+  }
+}
+
+function render() {
+  const s = state[stepIdx];
+  
+  // Render Word Target
+  const wordEl = document.getElementById("word-target");
+  wordEl.innerHTML = targetChars.map((char, idx) => 
+    `<span class="${s.i > idx || s.done ? 'match' : ''}">${char}</span>`
+  ).join("");
+
+  // Render Grid
+  const gridEl = document.getElementById("grid");
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  gridEl.innerHTML = "";
+  
+  for(let i=0; i<rows; i++) {
+    for(let j=0; j<cols; j++) {
+      let cell = document.createElement("div");
+      let cls = "cell";
+      let key = `${i},${j}`;
+      
+      if(s.path.includes(key)) cls += " in-path";
+      if(s.r === i && s.c === j) {
+        if(s.fail) cls += " fail";
+        else if(s.backtrack) cls += " fail"; // reuse red color to indicate backtrack step
+        else cls += " active";
+      }
+      if(s.done && s.path.includes(key)) cls += " found";
+
+      cell.className = cls;
+      cell.textContent = rawGrid[i][j];
+      gridEl.appendChild(cell);
+    }
+  }
+  
+  // Render Stack
+  const stackBox = document.getElementById("stack-box");
+  if(s.stack.length === 0) stackBox.innerHTML = '<span style="color:#484f58">Empty Stack</span>';
+  else stackBox.innerHTML = s.stack.map(item => `<div class="stack-item">${item}</div>`).join("");
+  
+  // Render Log
+  const logBox = document.getElementById("log-box");
+  logBox.innerHTML = state.slice(Math.max(0, stepIdx-7), stepIdx+1).map((st, i, arr) => 
+    `<div class="log-item ${i === arr.length-1 ? 'active' : ''}">${st.log}</div>`
+  ).join("");
+  logBox.scrollTop = logBox.scrollHeight;
+  
+  document.getElementById("btn-next").disabled = stepIdx >= state.length - 1;
+}
+
+function nextStep() {
+  if(stepIdx < state.length - 1) {
+    stepIdx++;
+    render();
+  } else if(autoTimer) {
+    toggleAuto();
+  }
+}
+
+function init() {
+  if(autoTimer) toggleAuto();
+  generateSteps();
+  stepIdx = 0;
+  render();
+}
+
+function toggleAuto() {
+  const btn = document.getElementById("btn-auto");
+  if(autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+    btn.textContent = "▶▶ Auto Play";
+    btn.style.color = "var(--text)";
+  } else {
+    btn.textContent = "⏸ Pause";
+    btn.style.color = "var(--orange)";
+    autoTimer = setInterval(nextStep, 1000);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
