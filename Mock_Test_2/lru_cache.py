@@ -11,36 +11,65 @@
 #
 # The functions get and put must each run in O(1) average time complexity.
 
+class Node:
+    def __init__(self, key, val):
+        self.key = key
+        self.val = val
+        self.prev = None
+        self.next = None
+
 class LRUCache:
 
     def __init__(self, capacity: int):
-        # TODO: Initialize your data structures here
-        self.cache = {}
         self.capacity = capacity
-        self.order = []
+        self.cache = {}  # Maps key -> Node
+        
+        # Dummy nodes to make edge cases (empty list) easier
+        # left = Least Recently Used (LRU)
+        # right = Most Recently Used (MRU)
+        self.left, self.right = Node(0, 0), Node(0, 0)
+        self.left.next = self.right
+        self.right.prev = self.left
+
+    # Helper 1: Remove a node from the linked list
+    def remove(self, node):
+        prev_node = node.prev
+        next_node = node.next
+        prev_node.next = next_node
+        next_node.prev = prev_node
+
+    # Helper 2: Insert node right before the right dummy (make it MRU)
+    def insert(self, node):
+        prev_node = self.right.prev
+        next_node = self.right
+        
+        prev_node.next = node
+        next_node.prev = node
+        
+        node.prev = prev_node
+        node.next = next_node
 
     def get(self, key: int) -> int:
-        # TODO: Implement get logic
-        if key not in self.cache:
-            return -1
-        
-        # Move the key to the end of the order list
-        self.order.remove(key)
-        self.order.append(key)
-
-        return self.cache[key]
+        if key in self.cache:
+            # Find the node, snip it out of its current position, 
+            # and append it to the MRU side (right side)
+            self.remove(self.cache[key])
+            self.insert(self.cache[key])
+            return self.cache[key].val
+        return -1
 
     def put(self, key: int, value: int) -> None:
-        # TODO: Implement put logic
         if key in self.cache:
-            self.cache[key] = value
-            self.order.remove(key)
-            self.order.append(key)
-        else:
-            if len(self.cache) == self.capacity:
-                lru_key = self.order.pop(0)
-                del self.cache[lru_key]
-            self.cache[key] = value
-            self.order.append(key)
-
-    
+            # If it exists, remove the old node
+            self.remove(self.cache[key])
+            
+        # Create a new node and make it MRU
+        self.cache[key] = Node(key, value)
+        self.insert(self.cache[key])
+        
+        # Check capacity
+        if len(self.cache) > self.capacity:
+            # Evict the LRU (which is exactly next to the left dummy node)
+            lru = self.left.next
+            self.remove(lru)
+            del self.cache[lru.key] 
