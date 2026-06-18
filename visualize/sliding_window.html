@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LC #3 Longest Substring Without Repeating — Sliding Window Visualizer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--muted:#8b949e;--text:#c9d1d9;--head:#f0f6fc;--blue:#58a6ff;--orange:#d29922;--green:#3fb950;--purple:#bc8cff;--red:#f85149}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.header{background:var(--panel);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.header-left h1{font-size:15px;font-weight:600;color:var(--head)}.header-left p{font-size:11px;color:var(--muted);margin-top:2px}
+.ex-btns{display:flex;gap:6px;flex-shrink:0}
+.ex-btn{padding:5px 13px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
+.ex-btn:hover{border-color:var(--blue);color:var(--blue)}.ex-btn.active{border-color:var(--blue);background:#1c3458;color:var(--blue);font-weight:600}
+.kbd-hint{font-size:11px;color:#484f58;flex-shrink:0;margin-left:auto;white-space:nowrap}.kbd-hint kbd{background:#21262d;border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:10px;color:var(--muted)}
+.main{display:flex;flex:1;overflow:hidden;min-height:0}
+.code-panel{width:30%;min-width:120px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+.resizer{width:5px;flex-shrink:0;cursor:col-resize;background:var(--border);transition:background .15s;z-index:10;position:relative}
+.resizer:hover,.resizer.dragging{background:var(--blue)}.resizer::after{content:'';position:absolute;inset:0 -4px}
+.code-block{flex:1;overflow-y:auto;padding:6px 0;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:11.5px;line-height:1.65}
+.code-block::-webkit-scrollbar{width:3px}.code-block::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.code-line{display:flex;align-items:center;padding:0 10px 0 0;min-height:19px;border-left:2px solid transparent;transition:background .18s,border-color .18s}
+.code-line.hl-orange{background:rgba(210,153,34,.13);border-left-color:var(--orange)}.code-line.hl-green{background:rgba(63,185,80,.13);border-left-color:var(--green)}.code-line.hl-red{background:rgba(248,81,73,.13);border-left-color:var(--red)}
+.ln{width:26px;text-align:right;flex-shrink:0;color:#484f58;font-size:10px;padding-right:10px;user-select:none}
+.code-line.hl-orange .ln{color:var(--orange)}.code-line.hl-green .ln{color:var(--green)}.code-line.hl-red .ln{color:var(--red)}
+.lt{white-space:pre}.kw{color:#ff7b72}.fn{color:#d2a8ff}.bi{color:#79c0ff}.cm{color:#484f58;font-style:italic}.nm{color:#f2cc60}.op{color:#ff7b72}.st{color:#a5d6ff}
+.io-bar{flex-shrink:0;padding:5px 10px;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:10.5px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;min-height:26px;background:#0a0d13}
+.io-bar.input{border-bottom:1px solid var(--border)}.io-bar.output{border-top:1px solid var(--border)}
+.io-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;flex-shrink:0}
+.io-bar.input .io-lbl{color:#58a6ff55}.io-bar.output .io-lbl{color:var(--green)}
+.io-kv{display:flex;gap:4px;align-items:baseline}.io-key{color:var(--purple)}.io-sep{color:#484f58}.io-v{color:var(--text)}.io-na{color:#484f58;font-style:italic}
+/* Visual panel */
+.visual-panel{flex:1;min-width:0;display:flex;flex-direction:column;padding:14px 18px;gap:14px;overflow:hidden;border-right:1px solid var(--border)}
+.panel-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+/* String display */
+.string-section{flex-shrink:0}
+.string-cells{display:flex;gap:4px;align-items:flex-end;flex-wrap:wrap}
+.char-cell{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+.char-box{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:7px;border:2px solid;font-size:20px;font-weight:700;font-family:monospace;transition:all .2s}
+.char-box.outside{background:#161b22;border-color:#21262d;color:#484f58}
+.char-box.window{background:#1c3458;border-color:var(--blue);color:var(--blue)}
+.char-box.right{background:#2d1f69;border-color:var(--purple);color:#d2b8ff;box-shadow:0 0 0 3px rgba(188,140,255,.2);transform:translateY(-3px)}
+.char-box.left{background:#1a1200;border-color:var(--orange);color:var(--orange);transform:translateY(-3px)}
+.char-box.duplicate{background:#2d1215;border-color:var(--red);color:var(--red);box-shadow:0 0 0 3px rgba(248,81,73,.2)}
+.char-box.best{background:#0d2a16;border-color:var(--green);color:var(--green)}
+.char-idx{font-size:9px;color:var(--muted);font-family:monospace}
+.char-label{font-size:9px;font-weight:700;min-height:13px;text-align:center;font-family:monospace}
+/* Window indicator */
+.window-bar{height:4px;border-radius:2px;background:var(--blue);opacity:0.5;transition:all .3s;margin-top:2px}
+/* Set panel */
+.set-section{flex:1;min-height:0;display:flex;flex-direction:column}
+.set-grid{display:flex;flex-wrap:wrap;gap:5px;overflow-y:auto}
+.set-entry{display:flex;flex-direction:column;align-items:center;gap:2px}
+.set-box{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--border);background:var(--bg);font-size:16px;font-weight:700;font-family:monospace;color:var(--blue);transition:all .2s}
+.set-box.new{border-color:var(--blue);background:#0d1f38;animation:popIn .25s ease}
+.set-box.removing{border-color:var(--red);background:#2d1215;color:var(--red)}
+.set-lbl{font-size:9px;color:#484f58}
+/* State panel */
+.state-panel{width:240px;flex-shrink:0;display:flex;flex-direction:column;padding:12px;gap:10px;overflow:hidden}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;flex-shrink:0}
+.card-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+.var-list{display:flex;flex-direction:column;gap:5px}
+.var-row{display:flex;align-items:center;gap:8px;font-family:monospace;font-size:12px}
+.var-name{color:var(--purple);font-weight:600;min-width:60px}
+.var-eq{color:#484f58}.var-val{color:var(--text);flex:1}
+.log-list{display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.log-list::-webkit-scrollbar{width:3px}.log-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.card-grow{flex:1;min-height:0;display:flex;flex-direction:column}.card-grow .log-list{flex:1;min-height:0}
+.log-entry{font-size:11px;line-height:1.4;color:#484f58;padding:4px 8px;background:var(--bg);border-radius:4px;border-left:2px solid var(--border)}
+.log-entry.active{color:var(--text);border-left-color:var(--blue);background:#0d1f38;animation:fadeUp .2s ease both}
+/* Max display */
+.max-display{font-size:28px;font-weight:700;font-family:monospace;color:var(--green);text-align:center;padding:8px}
+.bottom-bar{background:var(--panel);border-top:1px solid var(--border);padding:9px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.step-desc{flex:1;font-size:13px;line-height:1.45;color:var(--text)}
+.result-tag{display:none;padding:4px 13px;border-radius:20px;font-size:13px;font-weight:700;flex-shrink:0}
+.result-tag.show{display:flex;align-items:center;gap:5px;animation:fadeUp .28s ease both}
+.result-tag.pos{background:#0d2a16;border:1px solid var(--green);color:var(--green)}
+.step-num{font-size:11px;color:var(--muted);flex-shrink:0;min-width:60px;text-align:right}
+.controls{display:flex;gap:6px;flex-shrink:0}
+.btn{padding:7px 15px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn.primary{background:#1c3458;border-color:var(--blue);color:var(--blue)}.btn.primary:hover:not(:disabled){background:#1f4a7a}
+.btn.playing{background:#3d2b00;border-color:var(--orange);color:var(--orange)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{0%{opacity:0;transform:scale(.7)}65%{transform:scale(1.1)}100%{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>Longest Substring Without Repeating &nbsp;<span style="color:var(--muted);font-weight:400;font-size:12px">LC #3 · Day 3 — Sliding Window + Set</span></h1>
+    <p>Slide right pointer; when duplicate found, shrink from left until the duplicate is removed. Track max window size.</p>
+  </div>
+  <div class="ex-btns">
+    <button class="ex-btn active" onclick="loadEx(0)">① "abcabcbb" → 3</button>
+    <button class="ex-btn"        onclick="loadEx(1)">② "bbbbb" → 1</button>
+    <button class="ex-btn"        onclick="loadEx(2)">③ "pwwkew" → 3</button>
+  </div>
+  <div class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> step &nbsp;<kbd>Space</kbd> auto &nbsp;<kbd>R</kbd> reset</div>
+</div>
+
+<div class="main">
+  <div class="code-panel" id="code-panel">
+    <div style="padding:8px 12px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Python Code</div>
+    <div class="io-bar input" id="code-input"></div>
+    <div class="code-block" id="code-block"></div>
+    <div class="io-bar output" id="code-output"><span class="io-lbl">OUT</span><span class="io-na">— not yet —</span></div>
+  </div>
+  <div class="resizer" id="resizer"></div>
+
+  <div class="visual-panel">
+    <div class="string-section">
+      <div class="panel-label">String — purple = right pointer (expanding) · orange = left pointer · blue = current window · red = duplicate found</div>
+      <div class="string-cells" id="string-cells"></div>
+    </div>
+    <div class="set-section">
+      <div class="panel-label">Window set (chars in current window) &nbsp;<span id="set-badge" style="color:#484f58;font-size:9px;font-weight:400">empty</span></div>
+      <div class="set-grid" id="set-grid"></div>
+    </div>
+  </div>
+
+  <div class="state-panel">
+    <div class="card" style="text-align:center">
+      <div class="card-title">Best (max length)</div>
+      <div class="max-display" id="max-display">0</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Variables</div>
+      <div class="var-list" id="var-list"></div>
+    </div>
+    <div class="card card-grow">
+      <div class="card-title">Step Log</div>
+      <div class="log-list" id="log-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <div class="step-desc" id="step-desc">Pick an example above, then click <strong>Next Step ▶</strong></div>
+  <div class="result-tag" id="result-tag"></div>
+  <div class="step-num" id="step-num">— / —</div>
+  <div class="controls">
+    <button class="btn"         id="btn-prev" onclick="go(-1)" disabled>◀ Prev</button>
+    <button class="btn primary" id="btn-next" onclick="go(+1)">Next Step ▶</button>
+    <button class="btn"         id="btn-auto" onclick="toggleAuto()">▶▶ Auto</button>
+    <button class="btn"                        onclick="reset()">↺ Reset</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const r=document.getElementById('resizer'),cp=document.getElementById('code-panel'),m=document.querySelector('.main');
+  let sx,sw;
+  r.addEventListener('mousedown',e=>{sx=e.clientX;sw=cp.offsetWidth;r.classList.add('dragging');document.body.style.cursor='col-resize';document.body.style.userSelect='none';
+    const mv=e=>{const sp=document.querySelector('.state-panel').offsetWidth,av=m.offsetWidth-sp-5;cp.style.width=Math.min(Math.floor(av/2),Math.max(120,sw+(e.clientX-sx)))+'px'};
+    const up=()=>{r.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+})();
+
+const EX=['abcabcbb','bbbbb','pwwkew'];
+
+const CODE_LINES=[
+  {h:`<span class="kw">def</span> <span class="fn">longest_substring</span>(s):`,phases:[]},
+  {h:`    left = <span class="nm">0</span>`,phases:['init']},
+  {h:`    window = <span class="bi">set</span>()  <span class="cm"># chars in window</span>`,phases:['init']},
+  {h:`    best = <span class="nm">0</span>`,phases:['init']},
+  {h:``,phases:[]},
+  {h:`    <span class="kw">for</span> right, ch <span class="kw">in</span> <span class="bi">enumerate</span>(s):`,phases:['loop']},
+  {h:`        <span class="kw">while</span> ch <span class="kw">in</span> window:  <span class="cm"># shrink</span>`,phases:['shrink','shrinking']},
+  {h:`            window.remove(s[left])`,phases:['shrinking']},
+  {h:`            left <span class="op">+=</span> <span class="nm">1</span>`,phases:['shrinking']},
+  {h:`        window.add(ch)`,phases:['add']},
+  {h:`        best = <span class="bi">max</span>(best, right <span class="op">-</span> left <span class="op">+</span> <span class="nm">1</span>)`,phases:['update','best_update']},
+  {h:``,phases:[]},
+  {h:`    <span class="kw">return</span> best`,phases:['done']},
+];
+const PHASE_HL={init:'hl-orange',loop:'hl-orange',shrink:'hl-red',shrinking:'hl-red',add:'hl-orange',update:'hl-orange',best_update:'hl-green',done:'hl-green'};
+
+function simulate(s){
+  const steps=[];
+  steps.push({phase:'init',left:0,right:-1,window:new Set(),best:0,log:'Init left=0, window={}, best=0.'});
+  let left=0,window=new Set(),best=0;
+  for(let right=0;right<s.length;right++){
+    const ch=s[right];
+    steps.push({phase:'loop',left,right,window:new Set(window),best,log:`right=${right}: ch='${ch}'. Expanding window.`});
+    // shrink
+    if(window.has(ch)){
+      steps.push({phase:'shrink',left,right,window:new Set(window),best,shrinkCh:ch,log:`'${ch}' is in window. Must shrink from left until removed.`});
+      while(window.has(ch)){
+        const rm=s[left];
+        steps.push({phase:'shrinking',left,right,window:new Set(window),best,removingChar:rm,log:`Removing s[${left}]='${rm}' from window, left=${left+1}`});
+        window.delete(rm);
+        left++;
+      }
+    }
+    window.add(ch);
+    steps.push({phase:'add',left,right,window:new Set(window),best,log:`window.add('${ch}') → window size=${window.size}`});
+    const newBest=Math.max(best,right-left+1);
+    if(newBest>best){
+      best=newBest;
+      steps.push({phase:'best_update',left,right,window:new Set(window),best,log:`New best! ${right}-${left}+1=${best}`});
+    } else {
+      steps.push({phase:'update',left,right,window:new Set(window),best,log:`best = max(${best}, ${right-left+1}) = ${best}`});
+    }
+  }
+  steps.push({phase:'done',left,right:s.length-1,window:new Set(window),best,result:best,log:`Return best = ${best}`});
+  return steps;
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function renderString(s,step){
+  const left=step?step.left:0,right=step?step.right:-1;
+  const win=step?step.window:new Set();
+  const removingChar=step?step.removingChar:null;
+  const shrinkCh=step?step.shrinkCh:null;
+  document.getElementById('string-cells').innerHTML=Array.from(s).map((c,i)=>{
+    let cls='outside',lbl='';
+    if(step){
+      if(i===right){cls=step.phase==='shrink'||step.phase==='shrinking'?'duplicate':'right';lbl='R'}
+      else if(i===left&&i<right){cls='left';lbl='L'}
+      else if(i>left&&i<right&&win.has(c)){cls='window'}
+      else if(i<left){cls='outside'}
+    }
+    return `<div class="char-cell">
+      <div class="char-label" style="color:${cls==='right'?'var(--purple)':cls==='left'?'var(--orange)':cls==='duplicate'?'var(--red)':'transparent'}">${lbl||'&nbsp;'}</div>
+      <div class="char-box ${cls}">${esc(c)}</div>
+      <div class="char-idx">[${i}]</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSet(step){
+  const win=step?step.window:new Set();
+  const grid=document.getElementById('set-grid');
+  document.getElementById('set-badge').textContent=win.size>0?`{${[...win].map(c=>`'${c}'`).join(', ')}}`:'{} empty';
+  if(win.size===0){grid.innerHTML='<span style="font-size:11px;color:#484f58;font-style:italic">empty set</span>';return;}
+  grid.innerHTML=[...win].map(c=>`<div class="set-entry"><div class="set-box">${esc(c)}</div></div>`).join('');
+}
+
+function renderVars(step){
+  const vl=document.getElementById('var-list');
+  if(!step){vl.innerHTML='';return;}
+  const sz=step.window?step.window.size:0;
+  const rows=[['left',step.left],['right',step.right>=0?step.right:'—'],['win size',sz],['best',step.best]];
+  vl.innerHTML=rows.map(([n,v])=>`<div class="var-row"><span class="var-name">${n}</span><span class="var-eq">=</span><span class="var-val">${esc(String(v))}</span></div>`).join('');
+  const md=document.getElementById('max-display');
+  md.textContent=step.best||0;
+  md.style.color=step.best>0?'var(--green)':'#484f58';
+}
+
+function renderCode(s,step){
+  const phase=step?step.phase:'';
+  const hl=PHASE_HL[phase]||'';
+  document.getElementById('code-block').innerHTML=CODE_LINES.map((l,i)=>`<div class="code-line${l.phases.includes(phase)?' '+hl:''}"><span class="ln">${i+1}</span><span class="lt">${l.h}</span></div>`).join('');
+  document.getElementById('code-input').innerHTML=`<span class="io-lbl">IN</span><span class="io-kv"><span class="io-key">s</span><span class="io-sep">=</span><span class="io-v">"${esc(s)}"</span></span>`;
+  const out=document.getElementById('code-output');
+  if(step&&step.result!==undefined) out.innerHTML=`<span class="io-lbl">OUT</span><span class="io-v" style="color:var(--green)">${step.result}</span>`;
+  else out.innerHTML=`<span class="io-lbl">OUT</span><span class="io-na">— not yet —</span>`;
+}
+
+let exIdx=0,steps=[],stepIdx=-1,autoTmr=null;
+
+function render(){
+  const step=stepIdx>=0?steps[stepIdx]:null;
+  const s=EX[exIdx];
+  renderString(s,step);renderSet(step);renderVars(step);renderCode(s,step);
+  const ll=document.getElementById('log-list');
+  if(step){const idx=steps.indexOf(step);ll.innerHTML=steps.slice(0,idx+1).map((s,i)=>`<div class="log-entry${i===idx?' active':''}">${esc(s.log)}</div>`).join('');ll.lastElementChild?.scrollIntoView({block:'nearest'});}
+  else ll.innerHTML='';
+  const rt=document.getElementById('result-tag');
+  if(step&&step.result!==undefined){rt.className='result-tag show pos';rt.textContent='Best: '+step.result}else rt.className='result-tag';
+  document.getElementById('step-desc').innerHTML=step?esc(step.log):`Pick an example, then click <strong>Next Step ▶</strong>`;
+  document.getElementById('step-num').textContent=stepIdx>=0?`${stepIdx+1} / ${steps.length}`:'— / —';
+  document.getElementById('btn-prev').disabled=stepIdx<=0;
+  document.getElementById('btn-next').disabled=stepIdx>=steps.length-1;
+}
+
+function loadEx(i){
+  if(autoTmr){clearInterval(autoTmr);autoTmr=null;document.getElementById('btn-auto').classList.remove('playing');document.getElementById('btn-auto').textContent='▶▶ Auto'}
+  exIdx=i;steps=simulate(EX[i]);stepIdx=-1;
+  document.querySelectorAll('.ex-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  render();
+}
+function go(d){stepIdx=Math.max(-1,Math.min(steps.length-1,stepIdx+d));render();if(stepIdx>=steps.length-1&&autoTmr){clearInterval(autoTmr);autoTmr=null;document.getElementById('btn-auto').classList.remove('playing');document.getElementById('btn-auto').textContent='▶▶ Auto'}}
+function toggleAuto(){if(autoTmr){clearInterval(autoTmr);autoTmr=null;document.getElementById('btn-auto').classList.remove('playing');document.getElementById('btn-auto').textContent='▶▶ Auto'}else{document.getElementById('btn-auto').classList.add('playing');document.getElementById('btn-auto').textContent='⏸ Pause';autoTmr=setInterval(()=>{if(stepIdx<steps.length-1)go(1);else{clearInterval(autoTmr);autoTmr=null;document.getElementById('btn-auto').classList.remove('playing');document.getElementById('btn-auto').textContent='▶▶ Auto'}},800)}}
+function reset(){if(autoTmr){clearInterval(autoTmr);autoTmr=null;document.getElementById('btn-auto').classList.remove('playing');document.getElementById('btn-auto').textContent='▶▶ Auto'}stepIdx=-1;render()}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowDown')go(1);else if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(-1);else if(e.key===' '){e.preventDefault();toggleAuto()}else if(e.key==='r'||e.key==='R')reset()});
+loadEx(0);
+</script>
+</body>
+</html>
