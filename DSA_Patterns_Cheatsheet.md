@@ -30,6 +30,9 @@ def lengthOfLongestSubstring(s: str) -> int:
     return max_len
 ```
 **Explanation:** `right` pointer iterates through the string. If `s[right]` is already in `char_set`, we remove elements from the `left` until the duplicate is gone. We update the `max_len` at each valid step.
+**Complexity:**
+- **Time:** `O(N)` where N is length of string. Each character is visited at most twice (once by `right`, once by `left`).
+- **Space:** `O(min(N, M))` where M is the character set size (e.g., 26 for letters, 128 for ASCII).
 
 ---
 
@@ -66,6 +69,9 @@ def threeSum(nums: list[int]) -> list[list[int]]:
     return res
 ```
 **Explanation:** Sort the array first. Iterate with index `i`. Treat `nums[i]` as the target for a Two Sum problem on the remaining array (`left` to `right`). Crucial detail: aggressively skip duplicates to ensure unique triplets.
+**Complexity:**
+- **Time:** `O(N^2)`. Sorting takes `O(N log N)`, and the nested loop (Two Sum II) takes `O(N)` per element.
+- **Space:** `O(1)` or `O(N)` depending on the sorting algorithm's space complexity (Python's Timsort takes `O(N)`).
 
 ---
 
@@ -95,6 +101,9 @@ def topKFrequent(nums: list[int], k: int) -> list[int]:
     return [item[1] for item in heap]
 ```
 **Explanation:** Count frequencies first. Push `(freq, num)` to a min-heap. If the heap grows larger than `K`, pop the smallest. This keeps the time complexity at `O(N log K)`.
+**Complexity:**
+- **Time:** `O(N log K)`. We iterate through `N` unique elements and push/pop from a heap of max size `K`.
+- **Space:** `O(N + K)`. `O(N)` for the frequency map and `O(K)` for the heap.
 
 ---
 
@@ -137,6 +146,9 @@ def numIslands(grid: list[list[str]]) -> int:
     return islands
 ```
 **Explanation:** Iterate through every cell. When you find a `"1"` (land) that hasn't been visited, you've found a new island. Trigger a BFS to mark all connected `"1"`s as visited.
+**Complexity:**
+- **Time:** `O(M * N)` where M is rows, N is cols. We visit each cell at most a constant number of times.
+- **Space:** `O(min(M, N))`. In the worst-case scenario (a grid filled with land), the queue can grow to the size of the largest diagonal of the grid.
 
 ---
 
@@ -173,3 +185,6 @@ def exist(board: list[list[str]], word: str) -> bool:
     return False
 ```
 **Explanation:** At each cell, try to match `word[i]`. If it matches, mark it as visited (`path.add`) and recursively explore 4 directions. **Crucial step**: `path.remove((r, c))` after the recursive calls so the cell can be used in different paths.
+**Complexity:**
+- **Time:** `O(M * N * 3^L)` where `M, N` are grid dimensions and `L` is length of word. For each cell, we explore up to 3 directions (not looking back) up to depth `L`.
+- **Space:** `O(L)`. The recursion call stack will go as deep as the length of the word `L`.
