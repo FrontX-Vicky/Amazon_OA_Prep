@@ -24,20 +24,35 @@
 # Input: nums = [2,-1,2], k = 3
 # Output: 3
 
+from collections import deque
+
 def shortestSubarray(nums: list[int], k: int) -> int:
-    # TODO: Implement your solution here
-    # 
-    # LLM-Proof Warning: A standard Two-Pointer / Sliding Window approach will FAIL here.
-    # Why? Because standard Sliding Window relies on the sum *monotonically increasing* 
-    # as you expand the right pointer, and *monotonically decreasing* as you shrink the left.
-    # Because nums can contain negative numbers, expanding the right pointer might actually DECREASE the sum.
-    # 
-    # Hint: You need a Prefix Sum array. But to find the shortest distance efficiently, 
-    # consider maintaining a Monotonic Deque of the prefix sum indices.
-    
-    n =len(nums)
+    n = len(nums)
+    # 1. Prefix Sum Array
     prefix_sum = [0] * (n + 1)
     for i in range(n):
         prefix_sum[i + 1] = prefix_sum[i] + nums[i]
 
-          
+    # 2. Monotonic Deque
+    # We will store INDICES of the prefix_sum array in this deque.
+    # The values at these indices will be kept strictly increasing.
+    q = deque()
+    shortest = float('inf')
+
+    for i in range(n + 1):
+        # A) Check for valid subarray
+        # If the difference between the current prefix sum and the prefix sum 
+        # at the FRONT of the queue is >= k, we found a valid subarray!
+        while q and prefix_sum[i] - prefix_sum[q[0]] >= k:
+            shortest = min(shortest, i - q.popleft())
+        
+        # B) Maintain the Monotonic Property
+        # If the current prefix sum is LESS than or equal to the prefix sum at the BACK
+        # of the queue, the back element is useless. 
+        while q and prefix_sum[i] <= prefix_sum[q[-1]]:
+            q.pop()
+            
+        # C) Add current index to the queue
+        q.append(i)
+
+    return shortest if shortest != float('inf') else -1
