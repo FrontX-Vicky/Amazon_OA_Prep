@@ -28,6 +28,7 @@
 # Output: -1
 # Explanation: We need to eliminate at least two obstacles to find such a walk.
 
+import collections
 def shortestPath(grid: list[list[int]], k: int) -> int:
     # TODO: Implement your solution here
     # 
@@ -38,4 +39,30 @@ def shortestPath(grid: list[list[int]], k: int) -> int:
     # 
     # Hint: Your BFS Queue and your Visited set must track STATE, not just POSITION.
     # What exactly defines the "state" of your search at any given moment?
-    pass
+    rows, cols = len(grid), len(grid[0])
+
+    if k >= rows + cols - 2:
+        return rows + cols - 2
+
+    queue = collections.deque([(0,0,k,0)])
+    visited = set([(0,0,k)]) # (row, col, remaining_k)
+
+    while queue:
+        r, c, k, steps = queue.popleft()
+
+        if r == rows -1 and c == cols - 1:
+            return steps
+        
+        directions = [(1,0),(0,1),(-1,0),(0,-1)]
+        
+        for dr, dc in directions:
+            nr, nc = dr + r, dc + c
+
+            if 0 <= nr < rows and 0 <= nc < cols:
+                new_k = k - grid[nr][nc]
+                if new_k >= 0 and (nr, nc, new_k) not in visited:
+                    visited.add((nr, nc, new_k))
+                    queue.append((nr, nc, new_k, steps + 1))
+    
+    return -1
+
