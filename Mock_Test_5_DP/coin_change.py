@@ -29,15 +29,26 @@
 # Output: 0
 
 def coinChange(coins: list[int], amount: int) -> int:
-    # TODO: Implement your solution here
-    # 
-    # LLM-Proof Warning: A naive Greedy approach (always taking the largest coin first) FAILS.
-    # For example, if coins = [1, 3, 4] and amount = 6. 
-    # Greedy takes 4, leaving 2. Then takes 1, 1. Total = 3 coins.
-    # But optimal is 3 + 3. Total = 2 coins!
-    #
-    # Hint: You need a 1D DP array of size (amount + 1). 
-    # dp[i] will store the MINIMUM number of coins needed to make amount 'i'.
-    # Bottom-up approach: solve for amount=1, then amount=2, all the way up to target.
-        
-
+    # 1. Initialize the DP array
+    # We use float('inf') as a placeholder for "impossible"
+    # The size is amount + 1 because we need an index for every amount from 0 up to 'amount'
+    dp = [float('inf')] * (amount + 1)
+    
+    # 2. Base Case
+    # It takes exactly 0 coins to make an amount of 0.
+    dp[0] = 0
+    
+    # 3. Bottom-Up DP (The Transition)
+    # We will try to find the optimal answer for amount 1, then amount 2, etc.
+    for i in range(1, amount + 1):
+        for coin in coins:
+            # If the current coin is small enough to fit inside amount 'i'
+            if i - coin >= 0:
+                # The minimum coins to make amount 'i' is either:
+                # Option A: What we already have (dp[i])
+                # Option B: 1 (the coin we just used) + the minimum coins needed to make the remaining amount (dp[i - coin])
+                dp[i] = min(dp[i], dp[i - coin] + 1)
+                
+    # 4. Final Answer
+    # If the last element is still infinity, it means it's impossible to make that amount.
+    return dp[amount] if dp[amount] != float('inf') else -1
