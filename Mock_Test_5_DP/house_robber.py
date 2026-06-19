@@ -40,4 +40,27 @@ def rob(nums: list[int]) -> int:
     #    the max money you could steal up to house 'i-1'.
     #
     # Your Transition Formula: dp[i] = max(Option 1, Option 2)
-    pass
+    
+    n = len(nums)
+    if n == 0:
+        return 0
+    if n == 1:
+        return nums[0]
+
+    # 2. Initialize the DP array
+    dp = [0] * n
+    dp[0] = nums[0]
+    dp[1] = max(nums[0], nums[1])
+
+    # 3. Fill the DP array
+    for i in range(2, n):
+
+        rob_current = dp[i-2] + nums[i]
+        skip_current = dp[i-1]
+
+        dp[i] = max(rob_current, skip_current)
+    
+    return dp[n-1]
+
+
+    
