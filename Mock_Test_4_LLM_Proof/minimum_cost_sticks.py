@@ -41,4 +41,24 @@ def connectSticks(sticks: list[int]) -> int:
     # 
     # Hint: You need a data structure that allows you to constantly remove the two smallest elements,
     # and insert a new element, while maintaining sorted order perfectly in O(log N) time.
-    pass
+    
+    n = len(sticks)
+    if n <= 1:
+        return 0
+
+    heapq.heapify(sticks)
+
+    total_cost = 0
+
+    while len(sticks) > 1:
+        stick1 = heapq.heappop(sticks)
+        stick2 = heapq.heappop(sticks)
+
+        current_cost = stick1 + stick2
+        total_cost += current_cost
+
+        heapq.heappush(sticks, current_cost)
+
+    return total_cost
+
+    
