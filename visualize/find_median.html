@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Heaps Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; --text-color: #c9d1d9; --accent-color: #58a6ff;
+            --success-color: #3fb950; --danger-color: #f85149; --warning-color: #d29922;
+            --card-bg: #161b22; --border-color: #30363d; --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header { padding: 10px 20px; text-align: center; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; }
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 80px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+
+        /* Stream Array */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .array-container { 
+            display: flex; gap: 5px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; 
+            padding: 15px; border: 1px dashed var(--border-color); border-radius: 6px; position: relative;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        
+        .stream-item {
+            width: 35px; height: 35px; background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; transition: all 0.2s;
+        }
+        .stream-item.processed { background: #0d1117; color: #484f58; border-color: #21262d; }
+        .stream-item.active { border-color: var(--warning-color); box-shadow: 0 0 10px var(--warning-color); color: var(--warning-color); transform: scale(1.1); }
+
+        /* Two Heaps Architecture */
+        .heaps-wrapper {
+            display: flex; gap: 15px; justify-content: space-around; margin-bottom: 20px;
+        }
+        .heap-container {
+            flex: 1; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: #010409;
+            display: flex; flex-direction: column; align-items: center; min-height: 120px; position: relative;
+        }
+        .heap-title { font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
+        .heap-title.small { color: var(--danger-color); }
+        .heap-title.large { color: var(--success-color); }
+        
+        .heap-items { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+        .heap-node {
+            width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; border: 2px solid; background: #21262d; transition: all 0.3s;
+        }
+        .heap-node.small { border-color: var(--danger-color); }
+        .heap-node.large { border-color: var(--success-color); }
+        .heap-node.transfer { transform: scale(1.2); box-shadow: 0 0 15px #fff; border-color: #fff; z-index: 10;}
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-warning { color: var(--warning-color); }
+        .log-purple { color: var(--purple); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Advanced Heaps Visualizer</h2>
+        <p>Find Median from Data Stream (Two-Heap Architecture)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box" style="border-color: var(--purple)">
+                    <div class="var-title">Current Median</div>
+                    <div class="var-val" style="color:var(--purple)" id="median-val">None</div>
+                </div>
+            </div>
+
+            <div class="array-container" id="stream-container" style="margin-bottom: 20px;">
+                <div class="ds-label">Incoming Data Stream</div>
+            </div>
+
+            <div class="heaps-wrapper">
+                <div class="heap-container">
+                    <div class="heap-title small">Small (Max-Heap)</div>
+                    <div style="font-size: 0.7rem; color:#8b949e; margin-bottom:5px;">Stores smaller half. Root = Max.</div>
+                    <div class="heap-items" id="small-heap"></div>
+                </div>
+                <div class="heap-container">
+                    <div class="heap-title large">Large (Min-Heap)</div>
+                    <div style="font-size: 0.7rem; color:#8b949e; margin-bottom:5px;">Stores larger half. Root = Min.</div>
+                    <div class="heap-items" id="large-heap"></div>
+                </div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">class</span> <span class="k-typ">MedianFinder</span>:',
+            '    <span class="k-kw">def</span> <span class="k-fn">__init__</span>(<span class="k-kw">self</span>):',
+            '        <span class="k-com"># Two heaps: large is Min-Heap, small is Max-Heap</span>',
+            '        <span class="k-kw">self</span>.small, <span class="k-kw">self</span>.large = [], []',
+            '',
+            '    <span class="k-kw">def</span> <span class="k-fn">addNum</span>(<span class="k-kw">self</span>, num: <span class="k-typ">int</span>) -> <span class="k-kw">None</span>:',
+            '        <span class="k-com"># Default: add to small (Max-Heap), so invert the value in Python</span>',
+            '        heapq.heappush(<span class="k-kw">self</span>.small, -num)',
+            '        ',
+            '        <span class="k-com"># Rule 1: Every element in small MUST be <= every element in large</span>',
+            '        <span class="k-kw">if</span> <span class="k-kw">self</span>.small <span class="k-kw">and</span> <span class="k-kw">self</span>.large <span class="k-kw">and</span> (-<span class="k-kw">self</span>.small[<span class="k-num">0</span>] > <span class="k-kw">self</span>.large[<span class="k-num">0</span>]):',
+            '            val = -heapq.heappop(<span class="k-kw">self</span>.small)',
+            '            heapq.heappush(<span class="k-kw">self</span>.large, val)',
+            '            ',
+            '        <span class="k-com"># Rule 2: Sizes can differ by at most 1</span>',
+            '        <span class="k-kw">if</span> <span class="k-fn">len</span>(<span class="k-kw">self</span>.small) > <span class="k-fn">len</span>(<span class="k-kw">self</span>.large) + <span class="k-num">1</span>:',
+            '            val = -heapq.heappop(<span class="k-kw">self</span>.small)',
+            '            heapq.heappush(<span class="k-kw">self</span>.large, val)',
+            '            ',
+            '        <span class="k-kw">if</span> <span class="k-fn">len</span>(<span class="k-kw">self</span>.large) > <span class="k-fn">len</span>(<span class="k-kw">self</span>.small) + <span class="k-num">1</span>:',
+            '            val = heapq.heappop(<span class="k-kw">self</span>.large)',
+            '            heapq.heappush(<span class="k-kw">self</span>.small, -val)',
+            '',
+            '    <span class="k-kw">def</span> <span class="k-fn">findMedian</span>(<span class="k-kw">self</span>) -> <span class="k-typ">float</span>:',
+            '        <span class="k-kw">if</span> <span class="k-fn">len</span>(<span class="k-kw">self</span>.small) > <span class="k-fn">len</span>(<span class="k-kw">self</span>.large):',
+            '            <span class="k-kw">return</span> -<span class="k-kw">self</span>.small[<span class="k-num">0</span>]',
+            '        <span class="k-kw">if</span> <span class="k-fn">len</span>(<span class="k-kw">self</span>.large) > <span class="k-fn">len</span>(<span class="k-kw">self</span>.small):',
+            '            <span class="k-kw">return</span> <span class="k-kw">self</span>.large[<span class="k-num">0</span>]',
+            '            ',
+            '        <span class="k-com"># Even number of elements: average the two roots</span>',
+            '        <span class="k-kw">return</span> (-<span class="k-kw">self</span>.small[<span class="k-num">0</span>] + <span class="k-kw">self</span>.large[<span class="k-num">0</span>]) / <span class="k-num">2.0</span>'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Problem Data
+        const stream = [5, 10, 1, 3, 2];
+        
+        const streamContainer = document.getElementById('stream-container');
+        for(let i=0; i<stream.length; i++) {
+            streamContainer.innerHTML += `<div class="stream-item" id="stream-${i}">${stream[i]}</div>`;
+        }
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        // Custom heap array sort helpers for UI
+        function sortMax(arr) { return [...arr].sort((a,b)=>b-a); }
+        function sortMin(arr) { return [...arr].sort((a,b)=>a-b); }
+
+        function generateStates() {
+            states = [];
+            let small = []; // True values, UI treats as max-heap
+            let large = []; // True values, UI treats as min-heap
+            let median = "None";
+
+            states.push({
+                streamIdx: -1, small: [...small], large: [...large], median: median, line: 4,
+                log: `<span class="log-info">Initialized Small (Max-Heap) and Large (Min-Heap).</span>`
+            });
+
+            for (let i = 0; i < stream.length; i++) {
+                let num = stream[i];
+                
+                states.push({
+                    streamIdx: i, activeNum: num, small: [...small], large: [...large], median: median, line: 7,
+                    log: `<span class="log-highlight">--- addNum(${num}) ---</span>`
+                });
+
+                // Default push to small
+                small.push(num);
+                states.push({
+                    streamIdx: i, small: [...small], large: [...large], median: median, line: 8,
+                    log: `Added ${num} to Small Heap.`
+                });
+
+                // Check Rule 1: small[0] > large[0]
+                let sMax = sortMax(small)[0];
+                let lMin = large.length > 0 ? sortMin(large)[0] : Infinity;
+                
+                states.push({
+                    streamIdx: i, small: [...small], large: [...large], median: median, line: 11,
+                    log: `Checking Rule 1: Max of Small (${sMax}) > Min of Large (${lMin === Infinity ? 'None' : lMin})?`
+                });
+
+                if (small.length && large.length && sMax > lMin) {
+                    small.splice(small.indexOf(sMax), 1);
+                    large.push(sMax);
+                    states.push({
+                        streamIdx: i, small: [...small], large: [...large], median: median, line: 13, transfer: sMax,
+                        log: `<span class="log-danger">Rule 1 Violated!</span> Popped ${sMax} from Small and pushed to Large.`
+                    });
+                }
+
+                // Check Rule 2: Sizes
+                states.push({
+                    streamIdx: i, small: [...small], large: [...large], median: median, line: 16,
+                    log: `Checking Rule 2: Heap sizes. Small: ${small.length}, Large: ${large.length}.`
+                });
+
+                if (small.length > large.length + 1) {
+                    let val = sortMax(small)[0];
+                    small.splice(small.indexOf(val), 1);
+                    large.push(val);
+                    states.push({
+                        streamIdx: i, small: [...small], large: [...large], median: median, line: 18, transfer: val,
+                        log: `<span class="log-danger">Rule 2 Violated!</span> Small heap too big. Popped ${val} from Small to Large.`
+                    });
+                }
+                
+                if (large.length > small.length + 1) {
+                    let val = sortMin(large)[0];
+                    large.splice(large.indexOf(val), 1);
+                    small.push(val);
+                    states.push({
+                        streamIdx: i, small: [...small], large: [...large], median: median, line: 22, transfer: val,
+                        log: `<span class="log-danger">Rule 2 Violated!</span> Large heap too big. Popped ${val} from Large to Small.`
+                    });
+                }
+
+                // Find Median
+                states.push({
+                    streamIdx: i, small: [...small], large: [...large], median: median, line: 24,
+                    log: `<span class="log-highlight">--- findMedian() ---</span>`
+                });
+
+                if (small.length > large.length) {
+                    median = sortMax(small)[0].toFixed(1);
+                    states.push({
+                        streamIdx: i, small: [...small], large: [...large], median: median, line: 26,
+                        log: `Odd total elements. Small heap is larger. Return Max of Small: <span class="log-purple">${median}</span>`
+                    });
+                } else if (large.length > small.length) {
+                    median = sortMin(large)[0].toFixed(1);
+                    states.push({
+                        streamIdx: i, small: [...small], large: [...large], median: median, line: 28,
+                        log: `Odd total elements. Large heap is larger. Return Min of Large: <span class="log-purple">${median}</span>`
+                    });
+                } else {
+                    let v1 = sortMax(small)[0];
+                    let v2 = sortMin(large)[0];
+                    median = ((v1 + v2) / 2.0).toFixed(1);
+                    states.push({
+                        streamIdx: i, small: [...small], large: [...large], median: median, line: 31,
+                        log: `Even total elements. Return average of Small Max (${v1}) and Large Min (${v2}): <span class="log-purple">${median}</span>`
+                    });
+                }
+            }
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            document.getElementById('median-val').innerText = state.median;
+
+            // Render Stream
+            document.querySelectorAll('.stream-item').forEach((el, i) => {
+                el.className = 'stream-item';
+                if (i < state.streamIdx) el.classList.add('processed');
+                if (i === state.streamIdx && state.activeNum !== undefined) el.classList.add('active');
+            });
+
+            // Render Heaps (sorted to simulate root being first)
+            let sSorted = sortMax(state.small);
+            let lSorted = sortMin(state.large);
+
+            const smallContainer = document.getElementById('small-heap');
+            smallContainer.innerHTML = '';
+            sSorted.forEach(val => {
+                let cls = 'heap-node small';
+                if(state.transfer === val) cls += ' transfer';
+                smallContainer.innerHTML += `<div class="${cls}">${val}</div>`;
+            });
+
+            const largeContainer = document.getElementById('large-heap');
+            largeContainer.innerHTML = '';
+            lSorted.forEach(val => {
+                let cls = 'heap-node large';
+                if(state.transfer === val) cls += ' transfer';
+                largeContainer.innerHTML += `<div class="${cls}">${val}</div>`;
+            });
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>

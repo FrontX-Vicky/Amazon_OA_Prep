@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sliding Window Visualizer (Hard)</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; --text-color: #c9d1d9; --accent-color: #58a6ff;
+            --success-color: #3fb950; --danger-color: #f85149; --warning-color: #d29922;
+            --card-bg: #161b22; --border-color: #30363d; --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header { padding: 10px 20px; text-align: center; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; }
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 80px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+
+        /* String Array */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .array-container { 
+            display: flex; gap: 5px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; 
+            padding: 15px; border: 1px dashed var(--border-color); border-radius: 6px; position: relative;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        
+        .char-box {
+            width: 35px; height: 35px; background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 1.2rem; position: relative; transition: all 0.2s;
+        }
+        .char-box .idx { position: absolute; bottom: -18px; font-size: 0.6rem; color: #8b949e; }
+        .char-box.in-window { background: rgba(88, 166, 255, 0.2); border-color: var(--accent-color); }
+        .char-box.left-ptr { border-left: 4px solid var(--success-color); }
+        .char-box.right-ptr { border-right: 4px solid var(--danger-color); }
+        .char-box.best { background: rgba(188, 140, 255, 0.3); border-color: var(--purple); box-shadow: 0 0 10px var(--purple); }
+
+        /* HashMap */
+        .hash-container { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .hash-box {
+            background: #21262d; border: 1px solid var(--border-color); border-radius: 4px; padding: 10px;
+            display: flex; flex-direction: column; align-items: center; min-width: 50px;
+        }
+        .hash-key { font-weight: bold; color: var(--warning-color); margin-bottom: 5px; font-size: 1.2rem; }
+        .hash-val { font-size: 0.9rem; }
+        .hash-val.met { color: var(--success-color); font-weight: bold; }
+        .hash-val.unmet { color: var(--danger-color); }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-purple { color: var(--purple); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Sliding Window Visualizer (Dynamic Expansion)</h2>
+        <p>Minimum Window Substring (Tracking Have vs Need)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box">
+                    <div class="var-title">Have</div>
+                    <div class="var-val" id="have-val">0</div>
+                </div>
+                <div class="var-box">
+                    <div class="var-title">Need</div>
+                    <div class="var-val" id="need-val">3</div>
+                </div>
+                <div class="var-box" style="border-color: var(--purple)">
+                    <div class="var-title">Best Window</div>
+                    <div class="var-val" style="color:var(--purple)" id="best-val">None</div>
+                </div>
+            </div>
+
+            <div class="array-container" id="s-container" style="margin-bottom: 30px;">
+                <div class="ds-label">String 's' (Left & Right Pointers)</div>
+            </div>
+
+            <div class="hash-container" id="hash-container"></div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">def</span> <span class="k-fn">minWindow</span>(s: <span class="k-typ">str</span>, t: <span class="k-typ">str</span>) -> <span class="k-typ">str</span>:',
+            '    <span class="k-kw">if</span> t == <span class="k-str">""</span>: <span class="k-kw">return</span> <span class="k-str">""</span>',
+            '    ',
+            '    countT, window = {}, {}',
+            '    <span class="k-kw">for</span> c <span class="k-kw">in</span> t:',
+            '        countT[c] = <span class="k-num">1</span> + countT.get(c, <span class="k-num">0</span>)',
+            '        ',
+            '    have, need = <span class="k-num">0</span>, <span class="k-fn">len</span>(countT)',
+            '    res, resLen = [-<span class="k-num">1</span>, -<span class="k-num">1</span>], <span class="k-fn">float</span>(<span class="k-str">"inf"</span>)',
+            '    l = <span class="k-num">0</span>',
+            '    ',
+            '    <span class="k-kw">for</span> r <span class="k-kw">in</span> <span class="k-fn">range</span>(<span class="k-fn">len</span>(s)):',
+            '        c = s[r]',
+            '        window[c] = <span class="k-num">1</span> + window.get(c, <span class="k-num">0</span>)',
+            '        ',
+            '        <span class="k-kw">if</span> c <span class="k-kw">in</span> countT <span class="k-kw">and</span> window[c] == countT[c]:',
+            '            have += <span class="k-num">1</span>',
+            '            ',
+            '        <span class="k-kw">while</span> have == need:',
+            '            <span class="k-com"># Update our result</span>',
+            '            <span class="k-kw">if</span> (r - l + <span class="k-num">1</span>) < resLen:',
+            '                res = [l, r]',
+            '                resLen = (r - l + <span class="k-num">1</span>)',
+            '                ',
+            '            <span class="k-com"># Pop from the left of our window</span>',
+            '            window[s[l]] -= <span class="k-num">1</span>',
+            '            <span class="k-kw">if</span> s[l] <span class="k-kw">in</span> countT <span class="k-kw">and</span> window[s[l]] < countT[s[l]]:',
+            '                have -= <span class="k-num">1</span>',
+            '            l += <span class="k-num">1</span>',
+            '            ',
+            '    l, r = res',
+            '    <span class="k-kw">return</span> s[l:r+<span class="k-num">1</span>] <span class="k-kw">if</span> resLen != <span class="k-fn">float</span>(<span class="k-str">"inf"</span>) <span class="k-kw">else</span> <span class="k-str">""</span>'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Problem Data
+        const s = "ADOBECODEBANC";
+        const t = "ABC";
+        
+        const sContainer = document.getElementById('s-container');
+        for(let i=0; i<s.length; i++) {
+            sContainer.innerHTML += `<div class="char-box" id="char-${i}">${s[i]}<div class="idx">${i}</div></div>`;
+        }
+
+        const hashContainer = document.getElementById('hash-container');
+        const haveVal = document.getElementById('have-val');
+        const bestVal = document.getElementById('best-val');
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function generateStates() {
+            states = [];
+            let countT = { 'A': 1, 'B': 1, 'C': 1 };
+            let windowCounts = { 'A': 0, 'B': 0, 'C': 0 };
+            let have = 0, need = 3;
+            let l = 0;
+            let res = [-1, -1];
+            let resLen = Infinity;
+
+            states.push({
+                l: 0, r: -1, have: have, counts: {...windowCounts}, res: [...res], line: 12,
+                log: `<span class="log-info">Initialized HashMap requirements: {A:1, B:1, C:1}. Need = 3.</span>`
+            });
+
+            for (let r = 0; r < s.length; r++) {
+                let c = s[r];
+                states.push({
+                    l: l, r: r, have: have, counts: {...windowCounts}, res: [...res], line: 13,
+                    log: `<span class="log-highlight">--- Expanding Right Pointer (r=${r}, char='${c}') ---</span>`
+                });
+
+                if (windowCounts[c] !== undefined) windowCounts[c]++;
+                
+                let updatedHave = false;
+                if (countT[c] && windowCounts[c] === countT[c]) {
+                    have++;
+                    updatedHave = true;
+                }
+
+                states.push({
+                    l: l, r: r, have: have, counts: {...windowCounts}, res: [...res], line: 16,
+                    log: updatedHave ? `<span class="log-success">Window now has enough '${c}'s! have = ${have}.</span>` : `Added '${c}' to window.`
+                });
+
+                while (have === need) {
+                    states.push({
+                        l: l, r: r, have: have, counts: {...windowCounts}, res: [...res], line: 19,
+                        log: `<span class="log-success">Condition Met! (have == need). We have a valid window!</span>`
+                    });
+
+                    let curLen = r - l + 1;
+                    if (curLen < resLen) {
+                        resLen = curLen;
+                        res = [l, r];
+                        states.push({
+                            l: l, r: r, have: have, counts: {...windowCounts}, res: [...res], line: 22,
+                            log: `<span class="log-purple">New BEST Window Found! Length: ${resLen}. Substring: "${s.substring(l, r+1)}"</span>`
+                        });
+                    }
+
+                    let leftChar = s[l];
+                    states.push({
+                        l: l, r: r, have: have, counts: {...windowCounts}, res: [...res], line: 25,
+                        log: `<span class="log-danger">Shrinking Left Pointer (l=${l}, char='${leftChar}'). Removing from window.</span>`
+                    });
+
+                    if (windowCounts[leftChar] !== undefined) windowCounts[leftChar]--;
+                    
+                    if (countT[leftChar] && windowCounts[leftChar] < countT[leftChar]) {
+                        have--;
+                        states.push({
+                            l: l, r: r, have: have, counts: {...windowCounts}, res: [...res], line: 28,
+                            log: `<span class="log-danger">Lost a required '${leftChar}'! Window is no longer valid. have = ${have}.</span>`
+                        });
+                    }
+                    l++;
+                }
+            }
+            
+            states.push({
+                l: -1, r: -1, have: have, counts: {...windowCounts}, res: [...res], line: 32, finalBest: [...res],
+                log: `<span class="log-highlight">Finished! Minimum window substring is "${s.substring(res[0], res[1]+1)}".</span>`
+            });
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            haveVal.innerText = state.have;
+            if (state.res[0] !== -1) {
+                bestVal.innerText = `"${s.substring(state.res[0], state.res[1]+1)}" (Len ${state.res[1]-state.res[0]+1})`;
+            }
+
+            // Render Chars
+            document.querySelectorAll('.char-box').forEach((el, i) => {
+                el.className = 'char-box';
+                if (state.finalBest && i >= state.finalBest[0] && i <= state.finalBest[1]) el.classList.add('best');
+                else if (i >= state.l && i <= state.r) el.classList.add('in-window');
+                if (i === state.l) el.classList.add('left-ptr');
+                if (i === state.r) el.classList.add('right-ptr');
+            });
+
+            // Render Hash
+            hashContainer.innerHTML = '';
+            for (let c in state.counts) {
+                let cHave = state.counts[c];
+                let isMet = cHave >= 1;
+                hashContainer.innerHTML += `
+                    <div class="hash-box">
+                        <div class="hash-key">${c}</div>
+                        <div class="hash-val ${isMet ? 'met' : 'unmet'}">${cHave} / 1</div>
+                    </div>`;
+            }
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>

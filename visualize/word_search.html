@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFS Backtracking Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; --text-color: #c9d1d9; --accent-color: #58a6ff;
+            --success-color: #3fb950; --danger-color: #f85149; --warning-color: #d29922;
+            --card-bg: #161b22; --border-color: #30363d; --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header { padding: 10px 20px; text-align: center; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Target Word */
+        .target-container { display: flex; gap: 5px; justify-content: center; margin-bottom: 15px; }
+        .t-char { width: 30px; height: 30px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 4px; background: #21262d;}
+        .t-char.matched { background: rgba(63, 185, 80, 0.2); border-color: var(--success-color); color: var(--success-color); }
+        .t-char.active { border-color: var(--warning-color); box-shadow: 0 0 10px var(--warning-color); color: var(--warning-color); transform: scale(1.1); }
+
+        /* Grid */
+        .grid-container {
+            display: inline-grid; gap: 5px; padding: 15px; border: 1px dashed var(--border-color); border-radius: 6px;
+            margin: 0 auto 15px auto;
+        }
+        .cell {
+            width: 45px; height: 45px; background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem;
+            transition: all 0.2s; position: relative;
+        }
+        .cell.visiting { background: rgba(210, 153, 34, 0.3); border-color: var(--warning-color); }
+        .cell.path { background: rgba(88, 166, 255, 0.2); border-color: var(--accent-color); }
+        .cell.visited-temp { background: #0d1117; color: #484f58; border-color: #21262d; }
+        .cell.found { background: rgba(63, 185, 80, 0.3); border-color: var(--success-color); color: var(--success-color); }
+        .cell.deadend { background: rgba(248, 81, 73, 0.2); border-color: var(--danger-color); }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-warning { color: var(--warning-color); }
+        .log-purple { color: var(--purple); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>DFS Backtracking Visualizer</h2>
+        <p>Word Search (State Reversion Demo)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div style="text-align:center; color:#8b949e; font-size:0.8rem; margin-bottom:5px;">Target Word</div>
+            <div class="target-container" id="target-container"></div>
+
+            <div style="display:flex; justify-content:center;">
+                <div class="grid-container" id="grid-container"></div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">def</span> <span class="k-fn">exist</span>(board: <span class="k-typ">list</span>[<span class="k-typ">list</span>[<span class="k-typ">str</span>]], word: <span class="k-typ">str</span>) -> <span class="k-typ">bool</span>:',
+            '    ROWS, COLS = <span class="k-fn">len</span>(board), <span class="k-fn">len</span>(board[<span class="k-num">0</span>])',
+            '    ',
+            '    <span class="k-kw">def</span> <span class="k-fn">dfs</span>(r, c, i):',
+            '        <span class="k-kw">if</span> i == <span class="k-fn">len</span>(word):',
+            '            <span class="k-kw">return</span> <span class="k-kw">True</span>',
+            '            ',
+            '        <span class="k-kw">if</span> (r < <span class="k-num">0</span> <span class="k-kw">or</span> c < <span class="k-num">0</span> <span class="k-kw">or</span> r >= ROWS <span class="k-kw">or</span> c >= COLS <span class="k-kw">or</span> ',
+            '            board[r][c] != word[i] <span class="k-kw">or</span> board[r][c] == <span class="k-str">"#"</span>):',
+            '            <span class="k-kw">return</span> <span class="k-kw">False</span>',
+            '            ',
+            '        <span class="k-com"># 1. Mark as visited (State Mutation)</span>',
+            '        temp = board[r][c]',
+            '        board[r][c] = <span class="k-str">"#"</span>',
+            '        ',
+            '        <span class="k-com"># 2. Explore Neighbors</span>',
+            '        res = (dfs(r + <span class="k-num">1</span>, c, i + <span class="k-num">1</span>) <span class="k-kw">or</span>',
+            '               dfs(r - <span class="k-num">1</span>, c, i + <span class="k-num">1</span>) <span class="k-kw">or</span>',
+            '               dfs(r, c + <span class="k-num">1</span>, i + <span class="k-num">1</span>) <span class="k-kw">or</span>',
+            '               dfs(r, c - <span class="k-num">1</span>, i + <span class="k-num">1</span>))',
+            '               ',
+            '        <span class="k-com"># 3. Revert state (Backtracking)</span>',
+            '        board[r][c] = temp',
+            '        <span class="k-kw">return</span> res',
+            '        ',
+            '    <span class="k-kw">for</span> r <span class="k-kw">in</span> <span class="k-fn">range</span>(ROWS):',
+            '        <span class="k-kw">for</span> c <span class="k-kw">in</span> <span class="k-fn">range</span>(COLS):',
+            '            <span class="k-kw">if</span> dfs(r, c, <span class="k-num">0</span>):',
+            '                <span class="k-kw">return</span> <span class="k-kw">True</span>',
+            '    <span class="k-kw">return</span> <span class="k-kw">False</span>'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Problem Data
+        const board = [
+            ["A", "B", "C", "E"],
+            ["S", "F", "C", "S"],
+            ["A", "D", "E", "E"]
+        ];
+        const word = "ABCB";
+        const R = board.length;
+        const C = board[0].length;
+        
+        document.getElementById('grid-container').style.gridTemplateColumns = `repeat(${C}, 45px)`;
+        
+        const targetContainer = document.getElementById('target-container');
+        for(let i=0; i<word.length; i++) {
+            targetContainer.innerHTML += `<div class="t-char" id="t-${i}">${word[i]}</div>`;
+        }
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function cloneBoard(b) { return b.map(row => [...row]); }
+
+        function generateStates() {
+            states = [];
+            let currentBoard = cloneBoard(board);
+            let path = [];
+
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: -1, line: 26,
+                log: `<span class="log-info">Starting Search. Scanning grid for first letter '${word[0]}'.</span>`
+            });
+
+            // Hardcode the specific DFS path we want to show for visualization
+            // Start at 0,0 (A)
+            path.push({r:0, c:0});
+            currentBoard[0][0] = '#';
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 0, line: 14,
+                log: `<span class="log-warning">Found '${word[0]}' at (0,0).</span> Marking as visited ('#') and exploring neighbors for '${word[1]}'.`
+            });
+
+            // Move Right to 0,1 (B)
+            path.push({r:0, c:1});
+            currentBoard[0][1] = '#';
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 1, line: 14,
+                log: `<span class="log-warning">Found '${word[1]}' at (0,1).</span> Marking as visited ('#') and exploring neighbors for '${word[2]}'.`
+            });
+
+            // Move Right to 0,2 (C)
+            path.push({r:0, c:2});
+            currentBoard[0][2] = '#';
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 2, line: 14,
+                log: `<span class="log-warning">Found '${word[2]}' at (0,2).</span> Marking as visited ('#'). Now we need to find '${word[3]}' (B).`
+            });
+
+            // Try all neighbors for C to find B
+            // Down: (1,2) -> 'C'
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 3, line: 8, deadend: {r:1, c:2},
+                log: `Checking Down (1,2). It is '${board[1][2]}'. We need '${word[3]}'. <span class="log-danger">Mismatch. Return False.</span>`
+            });
+            // Right: (0,3) -> 'E'
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 3, line: 8, deadend: {r:0, c:3},
+                log: `Checking Right (0,3). It is '${board[0][3]}'. We need '${word[3]}'. <span class="log-danger">Mismatch. Return False.</span>`
+            });
+            // Left: (0,1) -> '#'
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 3, line: 8, deadend: {r:0, c:1},
+                log: `Checking Left (0,1). It is '#'. <span class="log-danger">We already visited this! Return False.</span> (This is why we mark cells).`
+            });
+
+            // All directions failed from C. Backtrack!
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 2, line: 23,
+                log: `<span class="log-purple">All paths failed from (0,2). BACKTRACKING!</span> Reverting '#' back to 'C'.`
+            });
+            currentBoard[0][2] = 'C';
+            path.pop();
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 1, line: 24,
+                log: `Returned to (0,1).`
+            });
+
+            // Continue from B. Try Down.
+            path.push({r:1, c:1});
+            currentBoard[1][1] = '#';
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 2, line: 8, deadend: {r:1, c:1},
+                log: `Checking Down (1,1). It is '${board[1][1]}'. We need '${word[2]}'. <span class="log-danger">Mismatch. Return False.</span>`
+            });
+            currentBoard[1][1] = 'F';
+            path.pop();
+
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 1, line: 23,
+                log: `<span class="log-purple">All paths failed from (0,1). BACKTRACKING!</span> Reverting '#' back to 'B'.`
+            });
+            currentBoard[0][1] = 'B';
+            path.pop();
+            
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: 0, line: 23,
+                log: `<span class="log-purple">All paths failed from (0,0). BACKTRACKING!</span> Reverting '#' back to 'A'.`
+            });
+            currentBoard[0][0] = 'A';
+            path.pop();
+
+            states.push({
+                board: cloneBoard(currentBoard), path: [...path], wordIdx: -1, line: 30,
+                log: `<span class="log-danger">Search complete. Word "${word}" does not exist in the grid. Return False.</span>`
+            });
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            // Render Target Word
+            document.querySelectorAll('.t-char').forEach((el, i) => {
+                el.className = 't-char';
+                if (i < state.wordIdx) el.classList.add('matched');
+                else if (i === state.wordIdx) el.classList.add('active');
+            });
+
+            // Render Grid
+            const gridContainer = document.getElementById('grid-container');
+            gridContainer.innerHTML = '';
+            for (let r = 0; r < R; r++) {
+                for (let c = 0; c < C; c++) {
+                    let val = state.board[r][c];
+                    let cls = 'cell';
+                    if (val === '#') cls += ' visited-temp';
+                    
+                    // Check if in path
+                    let inPath = state.path.find(p => p.r === r && p.c === c);
+                    if (inPath) cls += ' path';
+                    
+                    if (state.path.length > 0) {
+                        let last = state.path[state.path.length - 1];
+                        if (last.r === r && last.c === c) cls += ' visiting';
+                    }
+
+                    if (state.deadend && state.deadend.r === r && state.deadend.c === c) {
+                        cls += ' deadend';
+                    }
+
+                    gridContainer.innerHTML += `<div class="${cls}">${val === '#' ? board[r][c] : val}</div>`;
+                }
+            }
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>

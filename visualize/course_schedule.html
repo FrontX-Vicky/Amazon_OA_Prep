@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topological Sort Visualizer (Kahn's Algorithm)</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; --text-color: #c9d1d9; --accent-color: #58a6ff;
+            --success-color: #3fb950; --danger-color: #f85149; --warning-color: #d29922;
+            --card-bg: #161b22; --border-color: #30363d; --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header { padding: 10px 20px; text-align: center; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Variables & Queue */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; align-items: flex-start;}
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 80px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; margin-bottom: 5px;}
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+        
+        .queue-container { display: flex; gap: 5px; min-height: 35px; align-items: center; justify-content: center; }
+        .queue-item { background: var(--warning-color); color: #000; font-weight: bold; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+
+        /* Indegree Array */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .array-container { 
+            display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; 
+            padding: 15px; border: 1px dashed var(--border-color); border-radius: 6px; position: relative;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        
+        .indegree-box {
+            width: 45px; height: 50px; background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 1.1rem; position: relative; transition: all 0.3s;
+        }
+        .indegree-box .node-idx { position: absolute; top: -10px; background: #1f2428; border-radius: 50%; width: 20px; height: 20px; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; border: 1px solid #30363d;}
+        .indegree-box.zero { border-color: var(--success-color); background: rgba(63, 185, 80, 0.2); }
+        .indegree-box.updated { background: rgba(88, 166, 255, 0.3); border-color: var(--accent-color); transform: scale(1.1); }
+        .indegree-box.processing { border-color: var(--warning-color); box-shadow: 0 0 10px var(--warning-color); }
+
+        /* Graph Mockup */
+        .graph-mockup {
+            background: #010409; border: 1px solid var(--border-color); border-radius: 6px; padding: 20px;
+            margin-bottom: 15px; text-align: center; font-family: monospace; font-size: 1.1rem; line-height: 1.8;
+            color: #d29922;
+        }
+        .graph-mockup span.node { background: #21262d; padding: 2px 8px; border-radius: 12px; border: 1px solid #d29922; color: #fff;}
+        .graph-mockup span.edge { color: #8b949e; }
+        .graph-mockup span.active { background: var(--success-color); border-color: #fff; }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-warning { color: var(--warning-color); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Topological Sort Visualizer (Kahn's Algorithm)</h2>
+        <p>Course Schedule (Indegrees & Cycle Detection)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box">
+                    <div class="var-title">Completed Courses</div>
+                    <div class="var-val" id="completed-val" style="color:var(--success-color)">0 / 4</div>
+                </div>
+                <div class="var-box" style="flex:1">
+                    <div class="var-title">BFS Queue (Courses with 0 Indegree)</div>
+                    <div class="queue-container" id="queue-container"></div>
+                </div>
+            </div>
+
+            <div class="graph-mockup">
+                <div>Graph Dependencies:</div>
+                <span class="node" id="n-0">0</span> <span class="edge">→</span> <span class="node" id="n-1">1</span> <span class="edge">→</span> <span class="node" id="n-2">2</span><br>
+                <span class="node" id="n-3">3</span> <span class="edge">→</span> <span class="node" id="n-1">1</span><br>
+                <span style="font-size: 0.8rem; color:#8b949e">(Course 1 requires 0 and 3. Course 2 requires 1.)</span>
+            </div>
+
+            <div class="array-container" id="indegree-container">
+                <div class="ds-label">Indegree Array (How many prereqs left?)</div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">def</span> <span class="k-fn">canFinish</span>(numCourses: <span class="k-typ">int</span>, prerequisites: <span class="k-typ">list</span>[<span class="k-typ">list</span>[<span class="k-typ">int</span>]]) -> <span class="k-typ">bool</span>:',
+            '    <span class="k-com"># 1. Build Adjacency List and Indegree Array</span>',
+            '    adj = { i: [] <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(numCourses) }',
+            '    indegree = [<span class="k-num">0</span>] * numCourses',
+            '    ',
+            '    <span class="k-kw">for</span> crs, pre <span class="k-kw">in</span> prerequisites:',
+            '        adj[pre].append(crs)',
+            '        indegree[crs] += <span class="k-num">1</span>',
+            '        ',
+            '    <span class="k-com"># 2. Add all courses with 0 indegree to Queue</span>',
+            '    <span class="k-kw">import</span> collections',
+            '    q = collections.deque()',
+            '    <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(numCourses):',
+            '        <span class="k-kw">if</span> indegree[i] == <span class="k-num">0</span>:',
+            '            q.append(i)',
+            '            ',
+            '    <span class="k-com"># 3. Process BFS Queue</span>',
+            '    completed = <span class="k-num">0</span>',
+            '    <span class="k-kw">while</span> q:',
+            '        curr = q.popleft()',
+            '        completed += <span class="k-num">1</span>',
+            '        ',
+            '        <span class="k-com"># Decrease indegree for all neighbors</span>',
+            '        <span class="k-kw">for</span> neighbor <span class="k-kw">in</span> adj[curr]:',
+            '            indegree[neighbor] -= <span class="k-num">1</span>',
+            '            <span class="k-kw">if</span> indegree[neighbor] == <span class="k-num">0</span>:',
+            '                q.append(neighbor)',
+            '                ',
+            '    <span class="k-com"># 4. If we completed all courses, return True</span>',
+            '    <span class="k-kw">return</span> completed == numCourses'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Problem Data (Graph: 0->1, 3->1, 1->2)
+        const numCourses = 4;
+        const adj = {0: [1], 1: [2], 2: [], 3: [1]};
+        
+        const indegreeContainer = document.getElementById('indegree-container');
+        for(let i=0; i<numCourses; i++) {
+            indegreeContainer.innerHTML += `
+                <div class="indegree-box" id="in-${i}">
+                    <div class="node-idx">${i}</div>
+                    <div class="val" id="in-val-${i}">0</div>
+                </div>`;
+        }
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function generateStates() {
+            states = [];
+            let indegree = [0, 2, 1, 0]; // Pre-calculated for visualization
+            let q = [];
+            let completed = 0;
+
+            states.push({
+                indegree: [...indegree], q: [...q], completed: completed, line: 9,
+                log: `<span class="log-info">Graph built. Indegrees calculated. (Course 1 needs 0 and 3. Course 2 needs 1.)</span>`
+            });
+
+            // Add 0 indegrees to queue
+            for(let i=0; i<numCourses; i++){
+                if(indegree[i] === 0) q.push(i);
+            }
+
+            states.push({
+                indegree: [...indegree], q: [...q], completed: completed, line: 15, zeroList: [0, 3],
+                log: `<span class="log-success">Found courses with 0 prerequisites! Added Node 0 and Node 3 to the Queue.</span>`
+            });
+
+            // BFS
+            let steps = [
+                { pop: 0, nbr: 1, logInfo: "Popped 0. Neighbor is 1. Decrementing 1's indegree." },
+                { pop: 3, nbr: 1, logInfo: "Popped 3. Neighbor is 1. Decrementing 1's indegree." },
+                { pop: 1, nbr: 2, logInfo: "Popped 1. Neighbor is 2. Decrementing 2's indegree." },
+                { pop: 2, nbr: null, logInfo: "Popped 2. No neighbors." }
+            ];
+
+            for (let step of steps) {
+                let curr = q.shift(); // popleft
+                completed++;
+                
+                states.push({
+                    indegree: [...indegree], q: [...q], completed: completed, line: 20, processing: curr,
+                    log: `<span class="log-highlight">--- Popped Course ${curr} from Queue ---</span><br>Completed count is now ${completed}.`
+                });
+
+                if (step.nbr !== null) {
+                    indegree[step.nbr]--;
+                    let isZero = indegree[step.nbr] === 0;
+                    if (isZero) q.push(step.nbr);
+                    
+                    states.push({
+                        indegree: [...indegree], q: [...q], completed: completed, line: 25, processing: curr, updated: step.nbr, zeroList: isZero ? [step.nbr] : [],
+                        log: `Course ${curr} enables Course ${step.nbr}. Decrementing Indegree[${step.nbr}] to ${indegree[step.nbr]}. ` + 
+                             (isZero ? `<span class="log-success">Course ${step.nbr} now has 0 prereqs! Adding to Queue.</span>` : ``)
+                    });
+                } else {
+                    states.push({
+                        indegree: [...indegree], q: [...q], completed: completed, line: 23, processing: curr,
+                        log: `Course ${curr} has no outgoing neighbors to enable.`
+                    });
+                }
+            }
+            
+            states.push({
+                indegree: [...indegree], q: [...q], completed: completed, line: 29,
+                log: `<span class="log-success">Queue is empty! Completed ${completed} courses. Return ${completed === numCourses}.</span>`
+            });
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            document.getElementById('completed-val').innerText = `${state.completed} / ${numCourses}`;
+
+            // Render Queue
+            const qContainer = document.getElementById('queue-container');
+            qContainer.innerHTML = '';
+            if (state.q.length === 0) qContainer.innerHTML = '<span style="color:#8b949e; font-size:0.8rem">Empty</span>';
+            state.q.forEach(n => {
+                qContainer.innerHTML += `<div class="queue-item">${n}</div>`;
+            });
+
+            // Render Indegrees & Graph Mockup
+            document.querySelectorAll('.node').forEach(el => el.classList.remove('active'));
+            if (state.processing !== undefined) document.getElementById(`n-${state.processing}`).classList.add('active');
+
+            for (let i = 0; i < numCourses; i++) {
+                let box = document.getElementById(`in-${i}`);
+                let valStr = document.getElementById(`in-val-${i}`);
+                
+                box.className = 'indegree-box';
+                if (state.indegree[i] === 0) box.classList.add('zero');
+                if (state.updated === i) box.classList.add('updated');
+                if (state.processing === i) box.classList.add('processing');
+                
+                valStr.innerText = state.indegree[i];
+            }
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>
