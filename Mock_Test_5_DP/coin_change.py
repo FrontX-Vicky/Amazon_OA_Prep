@@ -40,12 +40,4 @@ def coinChange(coins: list[int], amount: int) -> int:
     # dp[i] will store the MINIMUM number of coins needed to make amount 'i'.
     # Bottom-up approach: solve for amount=1, then amount=2, all the way up to target.
         
-    dp = [float('inf')] * (amount + 1)
-    dp[0] = 0
-    
-    for i in range(1, amount + 1):
-        for coin in coins:
-            if i - coin >= 0:
-                dp[i] = min(dp[i], dp[i - coin] + 1)
 
-    return dp[amount] if dp[amount] != float('inf') else -1
