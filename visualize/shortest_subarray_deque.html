@@ -6,270 +6,224 @@
     <title>Monotonic Deque Visualizer</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --text-color: #f8fafc;
-            --accent-color: #3b82f6;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --card-bg: #1e293b;
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --danger-color: #f85149;
+            --card-bg: #161b22;
+            --border-color: #30363d;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 2rem;
+            padding: 0;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            overflow: hidden; /* Prevent full page scroll */
         }
 
-        h1 { margin-bottom: 0.5rem; }
-        .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+        .header {
+            padding: 10px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
 
         .main-wrapper {
             display: flex;
-            gap: 2rem;
-            width: 100%;
-            max-width: 1400px;
-            align-items: flex-start;
-        }
-
-        .container {
-            background-color: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             flex: 1;
-        }
-
-        .code-container {
-            flex: 1;
-            background-color: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            font-family: monospace;
-            font-size: 1.1rem;
-            line-height: 1.6;
-            overflow-x: auto;
-            white-space: pre;
-        }
-
-        .code-line {
-            padding: 2px 8px;
-            border-radius: 4px;
-            border-left: 4px solid transparent;
-            transition: background-color 0.2s, border-color 0.2s;
-        }
-
-        .code-line.active {
-            background-color: rgba(59, 130, 246, 0.2);
-            border-left-color: var(--accent-color);
-        }
-
-        .vars-container {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 2rem;
-            font-size: 1.2rem;
-        }
-
-        .var-box {
-            background-color: #334155;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .var-value {
-            font-weight: bold;
-            color: var(--success-color);
-            font-size: 1.5rem;
-        }
-
-        .array-container {
-            display: flex;
+            overflow: hidden;
+            padding: 10px;
             gap: 10px;
-            justify-content: center;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
         }
 
-        .array-box {
-            width: 60px;
-            height: 60px;
+        .visual-panel {
+            flex: 1.2;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: #334155;
-            border: 2px solid #475569;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-        
-        .array-box.active {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 10px var(--accent-color);
-        }
-
-        .array-box .index {
-            font-size: 0.7rem;
-            color: #94a3b8;
-            position: absolute;
-            bottom: 2px;
-        }
-
-        .deque-container {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 2rem;
-            min-height: 80px;
-            padding: 1rem;
-            border: 2px dashed #475569;
-            border-radius: 8px;
-            position: relative;
-        }
-        
-        .deque-label {
-            position: absolute;
-            top: -12px;
-            background: var(--card-bg);
-            padding: 0 10px;
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-
-        .deque-item {
-            padding: 0.5rem 1rem;
-            background-color: #6366f1;
-            border-radius: 4px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-weight: bold;
-        }
-        
-        .deque-item.popped {
-            background-color: var(--danger-color);
-            transform: translateY(20px);
-            opacity: 0;
-            transition: all 0.5s ease;
-        }
-        
-        .deque-item.matched {
-            background-color: var(--success-color);
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 2rem;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 1rem;
-            cursor: pointer;
-            border: none;
-            border-radius: 6px;
-            background-color: var(--accent-color);
-            color: white;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-
-        button:hover { background-color: #2563eb; }
-        button:disabled { background-color: #475569; cursor: not-allowed; }
-
-        .log-container {
-            margin-top: 2rem;
-            background-color: #0f172a;
-            padding: 1rem;
-            border-radius: 8px;
-            height: 150px;
+            padding: 15px;
             overflow-y: auto;
-            font-family: monospace;
-            border: 1px solid #334155;
         }
+
+        .code-panel {
+            flex: 0.8;
+            background-color: #1e1e1e; /* VSCode Dark */
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; }
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 100px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--success-color); }
+
+        /* Arrays */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .array-container { display: flex; gap: 5px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }
+        .array-box {
+            width: 45px; height: 45px;
+            background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            position: relative; font-weight: bold; font-size: 1rem;
+        }
+        .array-box.active { border-color: var(--accent-color); box-shadow: 0 0 8px rgba(88,166,255,0.4); }
+        .array-box .idx { position: absolute; bottom: 2px; font-size: 0.6rem; color: #8b949e; }
+
+        /* Deque */
+        .deque-container {
+            display: flex; gap: 5px; justify-content: center; min-height: 60px;
+            padding: 15px; border: 1px dashed var(--border-color); border-radius: 6px;
+            position: relative; margin-bottom: 15px;
+        }
+        .deque-label { position: absolute; top: -8px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        .deque-item {
+            padding: 5px 10px; background: #8957e5; color: white; border-radius: 4px;
+            display: flex; flex-direction: column; align-items: center; font-weight: bold;
+        }
+        .deque-item.popped { background: var(--danger-color); opacity: 0; transform: translateY(15px); transition: all 0.3s; }
+        .deque-item.matched { background: var(--success-color); }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button {
+            padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+        }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
         
-        .log-entry { margin-bottom: 0.5rem; }
-        .log-info { color: #94a3b8; }
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto;
+            font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; }
+        .log-highlight { color: #d29922; }
+        .log-info { color: #8b949e; }
         .log-success { color: var(--success-color); }
         .log-danger { color: var(--danger-color); }
-        .log-highlight { color: #fbbf24; }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        
+        /* Keywords */
+        .k-kw { color: #c586c0; } /* import, def, from, return, for, in, while, if, else */
+        .k-fn { color: #dcdcaa; } /* shortestSubarray, min, len, range */
+        .k-typ { color: #4ec9b0; } /* list, int, deque */
+        .k-num { color: #b5cea8; } /* 0, 1, -1 */
+        .k-str { color: #ce9178; } /* 'inf' */
+        .k-com { color: #6a9955; } /* comments */
+        .k-op { color: #d4d4d4; }
     </style>
 </head>
 <body>
 
-    <h1>Monotonic Deque (Shortest Subarray)</h1>
-    <div class="subtitle">Finding shortest subarray with sum >= K when array contains negative numbers</div>
+    <div class="header">
+        <h2>Monotonic Deque Visalizer</h2>
+        <p>Shortest Subarray with Sum at Least K (Handles Negative Numbers)</p>
+    </div>
 
     <div class="main-wrapper">
-        <!-- Visualizer Column -->
-        <div class="container">
+        <!-- Visual Panel -->
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
             <div class="vars-container">
                 <div class="var-box">
-                    <div>Target (K)</div>
-                    <div class="var-value">3</div>
+                    <div class="var-title">Target (K)</div>
+                    <div class="var-val">3</div>
                 </div>
                 <div class="var-box">
-                    <div>Shortest Subarray</div>
-                    <div class="var-value" id="shortest-val">∞</div>
+                    <div class="var-title">Shortest Subarray Length</div>
+                    <div class="var-val" id="shortest-val">∞</div>
                 </div>
             </div>
 
-            <h3>Original Array (nums)</h3>
+            <h4>Original Array (nums)</h4>
             <div class="array-container" id="nums-container"></div>
 
-            <h3>Prefix Sum Array (prefix_sum)</h3>
+            <h4>Prefix Sum Array (prefix_sum)</h4>
             <div class="array-container" id="prefix-container"></div>
 
             <div class="deque-container" id="deque-container">
-                <div class="deque-label">Monotonic Deque (Stores Indices)</div>
+                <div class="deque-label">Monotonic Deque (Stores prefix_sum indices)</div>
             </div>
 
             <div class="log-container" id="log"></div>
-
-            <div class="controls">
-                <button id="prev-btn" disabled>Previous Step</button>
-                <button id="next-btn">Next Step</button>
-                <button id="reset-btn">Reset</button>
-            </div>
         </div>
 
-        <!-- Code Column -->
-        <div class="code-container" id="code-block">
-<div class="code-line" id="line-1">def shortestSubarray(nums: list[int], k: int) -> int:</div>
-<div class="code-line" id="line-2">    n = len(nums)</div>
-<div class="code-line" id="line-3">    prefix_sum = [0] * (n + 1)</div>
-<div class="code-line" id="line-4">    for i in range(n):</div>
-<div class="code-line" id="line-5">        prefix_sum[i + 1] = prefix_sum[i] + nums[i]</div>
-<div class="code-line" id="line-6"></div>
-<div class="code-line" id="line-7">    q = deque()</div>
-<div class="code-line" id="line-8">    shortest = float('inf')</div>
-<div class="code-line" id="line-9"></div>
-<div class="code-line" id="line-10">    for i in range(n + 1):</div>
-<div class="code-line" id="line-11">        while q and prefix_sum[i] - prefix_sum[q[0]] >= k:</div>
-<div class="code-line" id="line-12">            shortest = min(shortest, i - q.popleft())</div>
-<div class="code-line" id="line-13"></div>
-<div class="code-line" id="line-14">        while q and prefix_sum[i] <= prefix_sum[q[-1]]:</div>
-<div class="code-line" id="line-15">            q.pop()</div>
-<div class="code-line" id="line-16"></div>
-<div class="code-line" id="line-17">        q.append(i)</div>
-<div class="code-line" id="line-18"></div>
-<div class="code-line" id="line-19">    return shortest if shortest != float('inf') else -1</div>
+        <!-- Code Panel -->
+        <div class="code-panel">
+            <div class="code-container" id="code-block">
+                <!-- Code injected by JS to keep HTML clean -->
+            </div>
         </div>
     </div>
 
     <script>
+        // Syntax Highlighted Code
+        const rawCode = [
+            '<span class="k-kw">from</span> collections <span class="k-kw">import</span> <span class="k-typ">deque</span>',
+            '',
+            '<span class="k-kw">def</span> <span class="k-fn">shortestSubarray</span>(nums: <span class="k-typ">list</span>[<span class="k-typ">int</span>], k: <span class="k-typ">int</span>) -> <span class="k-typ">int</span>:',
+            '    n = <span class="k-fn">len</span>(nums)',
+            '    <span class="k-com"># 1. Prefix Sum Array</span>',
+            '    prefix_sum = [<span class="k-num">0</span>] * (n + <span class="k-num">1</span>)',
+            '    <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(n):',
+            '        prefix_sum[i + <span class="k-num">1</span>] = prefix_sum[i] + nums[i]',
+            '',
+            '    <span class="k-com"># 2. Monotonic Deque</span>',
+            '    q = <span class="k-typ">deque</span>()',
+            '    shortest = <span class="k-fn">float</span>(<span class="k-str">\'inf\'</span>)',
+            '',
+            '    <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(n + <span class="k-num">1</span>):',
+            '        <span class="k-com"># A) Check for valid subarray</span>',
+            '        <span class="k-kw">while</span> q <span class="k-kw">and</span> prefix_sum[i] - prefix_sum[q[<span class="k-num">0</span>]] >= k:',
+            '            shortest = <span class="k-fn">min</span>(shortest, i - q.popleft())',
+            '        ',
+            '        <span class="k-com"># B) Maintain the Monotonic Property</span>',
+            '        <span class="k-kw">while</span> q <span class="k-kw">and</span> prefix_sum[i] <= prefix_sum[q[-<span class="k-num">1</span>]]:',
+            '            q.pop()',
+            '            ',
+            '        <span class="k-com"># C) Add current index to the queue</span>',
+            '        q.append(i)',
+            '',
+            '    <span class="k-kw">return</span> shortest <span class="k-kw">if</span> shortest != <span class="k-fn">float</span>(<span class="k-str">\'inf\'</span>) <span class="k-kw">else</span> -<span class="k-num">1</span>'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            const lineNum = idx + 1;
+            codeBlock.innerHTML += `<div class="code-line" id="line-${lineNum}">
+                <div class="l-num">${lineNum}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
         // Problem Data
         const nums = [2, -1, 2];
         const k = 3;
@@ -296,16 +250,14 @@
             numsContainer.innerHTML = '';
             nums.forEach((val, i) => {
                 numsContainer.innerHTML += `<div class="array-box" id="nums-${i}">
-                    ${val}
-                    <span class="index">i=${i}</span>
+                    ${val}<span class="idx">i=${i}</span>
                 </div>`;
             });
 
             prefixContainer.innerHTML = '';
             prefixSum.forEach((val, i) => {
                 prefixContainer.innerHTML += `<div class="array-box" id="prefix-${i}">
-                    ${val}
-                    <span class="index">idx=${i}</span>
+                    ${val}<span class="idx">idx=${i}</span>
                 </div>`;
             });
         }
@@ -317,157 +269,116 @@
             let shortest = Infinity;
             
             states.push({
-                i: -1,
-                q: [...q],
-                shortest: shortest,
-                line: 'line-3',
-                log: `<span class="log-info">Initialized prefix sum array. Starting Monotonic Deque logic.</span>`
+                i: -1, q: [...q], shortest: shortest, line: 6,
+                log: `<span class="log-info">Computed Prefix Sum Array: [0, 2, 1, 3]</span>`
+            });
+            states.push({
+                i: -1, q: [...q], shortest: shortest, line: 11,
+                log: `<span class="log-info">Initialized Empty Deque (q)</span>`
             });
 
             for (let i = 0; i < prefixSum.length; i++) {
                 states.push({
-                    i: i,
-                    q: [...q],
-                    shortest: shortest,
-                    line: 'line-10',
-                    log: `<span class="log-highlight">--- Processing index ${i} (prefix_sum[${i}] = ${prefixSum[i]}) ---</span>`
+                    i: i, q: [...q], shortest: shortest, line: 14,
+                    log: `<span class="log-highlight">--- For Loop: i=${i}, prefix_sum[${i}]=${prefixSum[i]} ---</span>`
                 });
 
                 // Step A: Check for valid subarray
                 states.push({
-                    i: i,
-                    q: [...q],
-                    shortest: shortest,
-                    line: 'line-11',
-                    log: `<span class="log-info">Loop A: Check if prefix_sum[${i}] - prefix_sum[q[0]] >= ${k}</span>`
+                    i: i, q: [...q], shortest: shortest, line: 16,
+                    log: `<span class="log-info">Step A Check: q and prefix_sum[${i}] - prefix_sum[q[0]] >= ${k}</span>`
                 });
 
                 while (q.length > 0 && prefixSum[i] - prefixSum[q[0]] >= k) {
-                    let poppedIdx = q[0]; // peek front
+                    let poppedIdx = q[0];
                     let diff = prefixSum[i] - prefixSum[poppedIdx];
                     let dist = i - poppedIdx;
                     
                     states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        matchedFront: true,
-                        line: 'line-12',
-                        log: `<span class="log-success">SUCCESS! ${prefixSum[i]} - ${prefixSum[poppedIdx]} = ${diff} (>= ${k}). Found valid subarray of length ${dist}.</span>`
+                        i: i, q: [...q], shortest: shortest, matchedFront: true, line: 17,
+                        log: `<span class="log-success">SUCCESS! diff=${diff} (>= ${k}). dist = ${dist}</span>`
                     });
                     
-                    if (dist < shortest) {
-                        shortest = dist;
-                    }
-                    
+                    if (dist < shortest) shortest = dist;
                     q.shift(); // popleft
                     
                     states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        poppedFront: poppedIdx,
-                        line: 'line-12',
-                        log: `<span class="log-info">Popped front index ${poppedIdx} because we want shortest array. We never need it again.</span>`
+                        i: i, q: [...q], shortest: shortest, poppedFront: poppedIdx, line: 17,
+                        log: `<span class="log-info">q.popleft() -> dropped index ${poppedIdx} because we want shortest</span>`
                     });
 
-                    // Check again
+                    // Check condition again
                     states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        line: 'line-11',
-                        log: `<span class="log-info">Loop A: Check again if prefix_sum[${i}] - prefix_sum[q[0]] >= ${k}</span>`
+                        i: i, q: [...q], shortest: shortest, line: 16,
+                        log: `<span class="log-info">Step A Re-Check: q and prefix_sum[${i}] - prefix_sum[q[0]] >= ${k}</span>`
                     });
                 }
                 
                 if (q.length > 0 && prefixSum[i] - prefixSum[q[0]] < k) {
                     states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        line: 'line-11',
-                        log: `<span class="log-info">Condition not met: ${prefixSum[i]} - ${prefixSum[q[0]]} < ${k}. Move to Step B.</span>`
+                        i: i, q: [...q], shortest: shortest, line: 16,
+                        log: `<span class="log-info">Step A Fails: diff < ${k}. Proceed to B.</span>`
+                    });
+                } else if (q.length === 0) {
+                    states.push({
+                        i: i, q: [...q], shortest: shortest, line: 16,
+                        log: `<span class="log-info">Step A Fails: q is empty. Proceed to B.</span>`
                     });
                 }
 
                 // Step B: Maintain Monotonic Property
                 states.push({
-                    i: i,
-                    q: [...q],
-                    shortest: shortest,
-                    line: 'line-14',
-                    log: `<span class="log-info">Loop B: Maintain strictly increasing order. Check if prefix_sum[${i}] <= prefix_sum[q[-1]]</span>`
+                    i: i, q: [...q], shortest: shortest, line: 20,
+                    log: `<span class="log-info">Step B Check: q and prefix_sum[${i}] <= prefix_sum[q[-1]]</span>`
                 });
 
                 while (q.length > 0 && prefixSum[i] <= prefixSum[q[q.length - 1]]) {
                     let backIdx = q[q.length - 1];
                     states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        line: 'line-15',
-                        log: `<span class="log-danger">WARNING: prefix_sum[${i}] (${prefixSum[i]}) <= prefix_sum[${backIdx}] (${prefixSum[backIdx]}). Index ${backIdx} is useless now!</span>`
+                        i: i, q: [...q], shortest: shortest, line: 21,
+                        log: `<span class="log-danger">Monotonicity broken! ${prefixSum[i]} <= ${prefixSum[backIdx]}.</span>`
                     });
                     
                     q.pop();
                     
                     states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        poppedBack: backIdx,
-                        line: 'line-15',
-                        log: `<span class="log-info">Popped back index ${backIdx}. Current index ${i} dominates it.</span>`
+                        i: i, q: [...q], shortest: shortest, poppedBack: backIdx, line: 21,
+                        log: `<span class="log-info">q.pop() -> dropped index ${backIdx} because ${i} dominates it.</span>`
                     });
 
                     // Check again
                     states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        line: 'line-14',
-                        log: `<span class="log-info">Loop B: Check again if prefix_sum[${i}] <= prefix_sum[q[-1]]</span>`
+                        i: i, q: [...q], shortest: shortest, line: 20,
+                        log: `<span class="log-info">Step B Re-Check: q and prefix_sum[${i}] <= prefix_sum[q[-1]]</span>`
                     });
                 }
                 
                 if (q.length === 0 || prefixSum[i] > prefixSum[q[q.length - 1]]) {
                      states.push({
-                        i: i,
-                        q: [...q],
-                        shortest: shortest,
-                        line: 'line-14',
-                        log: `<span class="log-info">Queue is strictly increasing. Proceeding to add current index.</span>`
+                        i: i, q: [...q], shortest: shortest, line: 20,
+                        log: `<span class="log-info">Step B Fails: queue is monotonic. Proceed to C.</span>`
                     });
                 }
 
                 // Step C: Add current index
                 q.push(i);
                 states.push({
-                    i: i,
-                    q: [...q],
-                    shortest: shortest,
-                    line: 'line-17',
-                    log: `<span class="log-success">Step C: Appended current index ${i} to Deque.</span>`
+                    i: i, q: [...q], shortest: shortest, line: 24,
+                    log: `<span class="log-success">Step C: q.append(${i})</span>`
                 });
             }
             
             states.push({
-                i: -1,
-                q: [...q],
-                shortest: shortest,
-                line: 'line-19',
-                log: `<span class="log-highlight">Algorithm Complete! Shortest subarray length is ${shortest === Infinity ? -1 : shortest}.</span>`
+                i: -1, q: [...q], shortest: shortest, line: 26,
+                log: `<span class="log-highlight">Return ${shortest === Infinity ? -1 : shortest}</span>`
             });
         }
 
         function renderState(stateIdx) {
             const state = states[stateIdx];
             
-            // Update shortest val
             shortestVal.innerText = state.shortest === Infinity ? '∞' : state.shortest;
 
-            // Highlight active array element
             document.querySelectorAll('.array-box').forEach(el => el.classList.remove('active'));
             if (state.i >= 0) {
                 const activeEl = document.getElementById(`prefix-${state.i}`);
@@ -477,56 +388,47 @@
             // Highlight Code Line
             document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
             if (state.line) {
-                const codeEl = document.getElementById(state.line);
+                const codeEl = document.getElementById(`line-${state.line}`);
                 if (codeEl) {
                     codeEl.classList.add('active');
-                    // Optional: scroll code block into view if needed
-                    // codeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    codeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
 
             // Render Deque
-            dequeContainer.innerHTML = '<div class="deque-label">Monotonic Deque (Stores Indices)</div>';
+            dequeContainer.innerHTML = '<div class="deque-label">Monotonic Deque (Stores prefix_sum indices)</div>';
             state.q.forEach(idx => {
                 let extraClass = '';
                 if (state.matchedFront && idx === state.q[0]) extraClass = 'matched';
-                
                 dequeContainer.innerHTML += `
                     <div class="deque-item ${extraClass}">
                         <span>idx: ${idx}</span>
-                        <span style="font-size:0.8rem; font-weight:normal">val: ${prefixSum[idx]}</span>
-                    </div>
-                `;
+                        <span style="font-size:0.7rem; font-weight:normal">val: ${prefixSum[idx]}</span>
+                    </div>`;
             });
             
-            // Render Popped items for animation effect
             if (state.poppedFront !== undefined) {
                  dequeContainer.innerHTML = `
                     <div class="deque-item popped">
                         <span>idx: ${state.poppedFront}</span>
-                        <span style="font-size:0.8rem; font-weight:normal">val: ${prefixSum[state.poppedFront]}</span>
-                    </div>
-                ` + dequeContainer.innerHTML;
+                        <span style="font-size:0.7rem; font-weight:normal">val: ${prefixSum[state.poppedFront]}</span>
+                    </div>` + dequeContainer.innerHTML;
             }
             if (state.poppedBack !== undefined) {
                  dequeContainer.innerHTML += `
                     <div class="deque-item popped">
                         <span>idx: ${state.poppedBack}</span>
-                        <span style="font-size:0.8rem; font-weight:normal">val: ${prefixSum[state.poppedBack]}</span>
-                    </div>
-                `;
+                        <span style="font-size:0.7rem; font-weight:normal">val: ${prefixSum[state.poppedBack]}</span>
+                    </div>`;
             }
 
-            // Update Log
             logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
             logContainer.scrollTop = logContainer.scrollHeight;
 
-            // Update Buttons
             prevBtn.disabled = stateIdx === 0;
             nextBtn.disabled = stateIdx === states.length - 1;
         }
 
-        // Event Listeners
         nextBtn.addEventListener('click', () => {
             if (currentStateIdx < states.length - 1) {
                 currentStateIdx++;
@@ -536,12 +438,10 @@
 
         prevBtn.addEventListener('click', () => {
             if (currentStateIdx > 0) {
-                // Clear log when going backwards to prevent clutter
                 logContainer.innerHTML = '';
                 currentStateIdx--;
-                // Re-render all previous logs
                 for(let i=0; i<=currentStateIdx; i++){
-                    if(i===currentStateIdx) renderState(i); // Only render full UI on the last one
+                    if(i===currentStateIdx) renderState(i);
                     else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
                 }
             }
@@ -553,12 +453,10 @@
             renderState(currentStateIdx);
         });
 
-        // Initialize
         initArrays();
         generateStates();
         currentStateIdx = 0;
         renderState(currentStateIdx);
-
     </script>
 </body>
 </html>
