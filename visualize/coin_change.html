@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Programming Visualizer (Coin Change)</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --danger-color: #f85149;
+            --warning-color: #d29922;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 0; height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header {
+            padding: 10px 20px; text-align: center;
+            border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+        }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; }
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 100px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+
+        /* Coins */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .coins-container { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .coin-box {
+            width: 40px; height: 40px; border-radius: 50%; background: #d29922; border: 2px solid #9e6a03;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; color: #000;
+            transition: all 0.3s;
+        }
+        .coin-box.active { transform: scale(1.2); box-shadow: 0 0 15px var(--warning-color); border-color: #fff; }
+
+        /* DP Array */
+        .dp-container { 
+            display: flex; gap: 5px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; 
+            padding: 15px; border: 1px dashed var(--border-color); border-radius: 6px; position: relative;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        .dp-cell {
+            width: 45px; height: 45px; background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 1.1rem; position: relative; transition: all 0.3s;
+        }
+        .dp-cell .idx { position: absolute; bottom: 2px; font-size: 0.55rem; color: #8b949e; }
+        .dp-cell.target { border-color: var(--accent-color); box-shadow: 0 0 10px var(--accent-color); z-index: 2;}
+        .dp-cell.source { border-color: var(--purple); background: rgba(188, 140, 255, 0.2); }
+        .dp-cell.updated { background: var(--success-color); color: #fff; border-color: #2ea043; }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-info { color: #8b949e; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-warning { color: var(--warning-color); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>1D DP Visualizer (LLM-Proof Greedy Trap)</h2>
+        <p>Coin Change (Building the optimal answer Bottom-Up)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box">
+                    <div class="var-title">Building Amount (i)</div>
+                    <div class="var-val" id="amt-val">-</div>
+                </div>
+                <div class="var-box">
+                    <div class="var-title">Testing Coin</div>
+                    <div class="var-val" id="coin-val">-</div>
+                </div>
+            </div>
+
+            <h4>Available Coins</h4>
+            <div class="coins-container" id="coins-container"></div>
+
+            <div class="dp-container" id="dp-container">
+                <div class="ds-label">DP Array (Minimum Coins to make amount 'i')</div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">def</span> <span class="k-fn">coinChange</span>(coins: <span class="k-typ">list</span>[<span class="k-typ">int</span>], amount: <span class="k-typ">int</span>) -> <span class="k-typ">int</span>:',
+            '    <span class="k-com"># Initialize DP array with infinity</span>',
+            '    dp = [<span class="k-fn">float</span>(<span class="k-str">\'inf\'</span>)] * (amount + <span class="k-num">1</span>)',
+            '    ',
+            '    <span class="k-com"># Base case: 0 coins needed to make amount 0</span>',
+            '    dp[<span class="k-num">0</span>] = <span class="k-num">0</span>',
+            '    ',
+            '    <span class="k-com"># Solve for every amount from 1 up to target</span>',
+            '    <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(<span class="k-num">1</span>, amount + <span class="k-num">1</span>):',
+            '        <span class="k-kw">for</span> coin <span class="k-kw">in</span> coins:',
+            '            <span class="k-com"># Can we use this coin?</span>',
+            '            <span class="k-kw">if</span> i - coin >= <span class="k-num">0</span>:',
+            '                <span class="k-com"># 1 (the coin we are using) + min coins needed for remainder</span>',
+            '                dp[i] = <span class="k-fn">min</span>(dp[i], dp[i - coin] + <span class="k-num">1</span>)',
+            '                ',
+            '    <span class="k-kw">return</span> dp[amount] <span class="k-kw">if</span> dp[amount] != <span class="k-fn">float</span>(<span class="k-str">\'inf\'</span>) <span class="k-kw">else</span> -<span class="k-num">1</span>'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Problem Data (Using the Greedy Trap Example)
+        const coins = [1, 3, 4];
+        const targetAmount = 6;
+        
+        const coinsContainer = document.getElementById('coins-container');
+        coins.forEach(c => {
+            coinsContainer.innerHTML += `<div class="coin-box" id="coin-${c}">${c}</div>`;
+        });
+
+        const dpContainer = document.getElementById('dp-container');
+        const amtVal = document.getElementById('amt-val');
+        const coinVal = document.getElementById('coin-val');
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function generateStates() {
+            states = [];
+            let dp = new Array(targetAmount + 1).fill('∞');
+            
+            states.push({
+                dp: [...dp], i: '-', coin: '-', line: 3,
+                log: `<span class="log-info">Initialized DP array of size ${targetAmount+1} with Infinity.</span>`
+            });
+
+            dp[0] = 0;
+            states.push({
+                dp: [...dp], i: '-', coin: '-', line: 6,
+                log: `<span class="log-success">Base Case: dp[0] = 0 (Requires 0 coins to make amount 0)</span>`
+            });
+
+            for (let i = 1; i <= targetAmount; i++) {
+                states.push({
+                    dp: [...dp], i: i, coin: '-', line: 9,
+                    log: `<span class="log-highlight">--- Solving for Amount i = ${i} ---</span>`
+                });
+
+                for (let c of coins) {
+                    states.push({
+                        dp: [...dp], i: i, coin: c, line: 10,
+                        log: `Testing coin: <span class="log-warning">${c}</span>`
+                    });
+
+                    if (i - c >= 0) {
+                        let remainder = i - c;
+                        let remainderVal = dp[remainder];
+                        
+                        states.push({
+                            dp: [...dp], i: i, coin: c, sourceIdx: remainder, line: 12,
+                            log: `Can use coin ${c}. Remainder is (i - coin) = ${i} - ${c} = ${remainder}. Checking dp[${remainder}] = ${remainderVal}.`
+                        });
+
+                        if (remainderVal !== '∞') {
+                            let potential = remainderVal + 1;
+                            let current = dp[i] === '∞' ? Infinity : dp[i];
+                            
+                            if (potential < current) {
+                                dp[i] = potential;
+                                states.push({
+                                    dp: [...dp], i: i, coin: c, sourceIdx: remainder, updated: true, line: 14,
+                                    log: `<span class="log-success">Found better way! dp[${i}] = min(dp[${i}], dp[${remainder}] + 1) -> ${potential}.</span>`
+                                });
+                            } else {
+                                states.push({
+                                    dp: [...dp], i: i, coin: c, sourceIdx: remainder, line: 14,
+                                    log: `<span class="log-info">Not better. dp[${i}] remains ${current === Infinity ? '∞' : current}.</span>`
+                                });
+                            }
+                        } else {
+                            states.push({
+                                dp: [...dp], i: i, coin: c, sourceIdx: remainder, line: 14,
+                                log: `<span class="log-info">dp[${remainder}] is ∞. Cannot build from here.</span>`
+                            });
+                        }
+                    } else {
+                        states.push({
+                            dp: [...dp], i: i, coin: c, line: 12,
+                            log: `<span class="log-danger">Coin ${c} is greater than amount ${i}. Cannot use it.</span>`
+                        });
+                    }
+                }
+            }
+            
+            states.push({
+                dp: [...dp], i: '-', coin: '-', line: 16,
+                log: `<span class="log-highlight">Finished! dp[${targetAmount}] = ${dp[targetAmount]}. Target amount ${targetAmount} takes ${dp[targetAmount]} coins.</span>`
+            });
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            amtVal.innerText = state.i;
+            coinVal.innerText = state.coin;
+
+            // Render Coins
+            document.querySelectorAll('.coin-box').forEach(el => el.classList.remove('active'));
+            if (state.coin !== '-') {
+                const cEl = document.getElementById(`coin-${state.coin}`);
+                if (cEl) cEl.classList.add('active');
+            }
+
+            // Render DP Array
+            dpContainer.innerHTML = '<div class="ds-label">DP Array (Minimum Coins to make amount "i")</div>';
+            state.dp.forEach((val, i) => {
+                let extra = '';
+                if (state.i === i) extra += ' target';
+                if (state.sourceIdx === i) extra += ' source';
+                if (state.updated && state.i === i) extra += ' updated';
+                
+                dpContainer.innerHTML += `
+                    <div class="dp-cell ${extra}">
+                        ${val}
+                        <span class="idx">i=${i}</span>
+                    </div>`;
+            });
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>
