@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heap Visualizer (Minimum Cost to Connect Sticks)</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --danger-color: #f85149;
+            --warning-color: #d29922;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header {
+            padding: 10px 20px; text-align: center;
+            border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+        }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; }
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 100px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--success-color); }
+
+        /* Heap Array */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .array-container { 
+            display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; 
+            flex-wrap: wrap; min-height: 50px; padding: 15px; 
+            border: 1px dashed var(--border-color); border-radius: 6px; position: relative;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        
+        .array-box {
+            width: 50px; height: 50px;
+            background: #2ea043; border: 2px solid #238636; border-radius: 8px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 1.2rem; color: #fff; transition: all 0.3s;
+        }
+        .array-box.popping { background: var(--danger-color); border-color: #b3261e; transform: translateY(-10px); opacity: 0.5; }
+        .array-box.pushing { background: var(--accent-color); border-color: #1f6feb; animation: popIn 0.5s; }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Connecting Animation Box */
+        .workspace-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            margin-bottom: 20px; padding: 15px; border-radius: 6px; background: #010409;
+            min-height: 80px;
+        }
+        .workspace-text { font-size: 1.5rem; font-weight: bold; color: var(--warning-color); display: flex; align-items: center; gap: 10px;}
+        .stick { background: #8b949e; border-radius: 20px; height: 10px; transition: width 0.3s;}
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto;
+            font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-info { color: #8b949e; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-warning { color: var(--warning-color); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Min-Heap Visualizer (LLM-Proof)</h2>
+        <p>Minimum Cost to Connect Sticks (Constantly Re-Sorting Data)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box">
+                    <div class="var-title">Total Cost</div>
+                    <div class="var-val" id="total-val">0</div>
+                </div>
+            </div>
+
+            <div class="array-container" id="heap-container">
+                <div class="ds-label">Min-Heap (sticks)</div>
+            </div>
+
+            <div class="workspace-container" id="workspace">
+                <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 10px;">Connecting Workspace</div>
+                <div class="workspace-text" id="ws-text">Ready</div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">import</span> heapq',
+            '',
+            '<span class="k-kw">def</span> <span class="k-fn">connectSticks</span>(sticks: <span class="k-typ">list</span>[<span class="k-typ">int</span>]) -> <span class="k-typ">int</span>:',
+            '    <span class="k-kw">if</span> <span class="k-kw">not</span> sticks <span class="k-kw">or</span> <span class="k-fn">len</span>(sticks) <= <span class="k-num">1</span>:',
+            '        <span class="k-kw">return</span> <span class="k-num">0</span>',
+            '        ',
+            '    <span class="k-com"># Convert list into a Min-Heap in O(N) time</span>',
+            '    heapq.heapify(sticks)',
+            '    total_cost = <span class="k-num">0</span>',
+            '    ',
+            '    <span class="k-kw">while</span> <span class="k-fn">len</span>(sticks) > <span class="k-num">1</span>:',
+            '        <span class="k-com"># Extract the two absolutely smallest sticks</span>',
+            '        stick1 = heapq.heappop(sticks)',
+            '        stick2 = heapq.heappop(sticks)',
+            '        ',
+            '        <span class="k-com"># The cost to connect them</span>',
+            '        cost = stick1 + stick2',
+            '        total_cost += cost',
+            '        ',
+            '        <span class="k-com"># Push the NEW combined stick back into the Heap</span>',
+            '        <span class="k-com"># It will automatically bubble to its correct sorted position!</span>',
+            '        heapq.heappush(sticks, cost)',
+            '        ',
+            '    <span class="k-kw">return</span> total_cost'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Problem Data
+        const initialSticks = [1, 8, 3, 5];
+        
+        const heapContainer = document.getElementById('heap-container');
+        const workspaceText = document.getElementById('ws-text');
+        const totalVal = document.getElementById('total-val');
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function generateStates() {
+            states = [];
+            let h = [...initialSticks];
+            let total = 0;
+
+            states.push({
+                h: [...h], total: total, line: 3, ws: 'Ready',
+                log: `<span class="log-info">Initial array: [${h.join(', ')}]</span>`
+            });
+
+            // Simulate heapify (just sort for visual ease)
+            h.sort((a,b) => a-b);
+            states.push({
+                h: [...h], total: total, line: 8, ws: 'Heapified!',
+                log: `<span class="log-success">heapq.heapify() organized array into a Min-Heap: [${h.join(', ')}]</span>`
+            });
+            states.push({
+                h: [...h], total: total, line: 9, ws: 'Total Cost = 0',
+                log: `<span class="log-info">total_cost = 0</span>`
+            });
+
+            while (h.length > 1) {
+                states.push({
+                    h: [...h], total: total, line: 11, ws: `Checking Heap Size (${h.length} > 1)`,
+                    log: `<span class="log-highlight">--- While Loop: ${h.length} sticks remaining ---</span>`
+                });
+
+                let s1 = h.shift(); // simulate heappop
+                states.push({
+                    h: [...h], total: total, line: 13, popped1: s1, ws: `${s1} + ?`,
+                    log: `<span class="log-info">heappop(): extracted smallest stick ${s1}</span>`
+                });
+
+                let s2 = h.shift(); // simulate heappop
+                states.push({
+                    h: [...h], total: total, line: 14, popped2: s2, ws: `${s1} + ${s2}`,
+                    log: `<span class="log-info">heappop(): extracted second smallest stick ${s2}</span>`
+                });
+
+                let cost = s1 + s2;
+                total += cost;
+                states.push({
+                    h: [...h], total: total, line: 17, ws: `${s1} + ${s2} = <span style="color:#f85149">${cost}</span>`,
+                    log: `<span class="log-danger">Combined sticks! Cost = ${cost}. Adding to Total Cost.</span>`
+                });
+
+                h.push(cost);
+                h.sort((a,b) => a-b); // maintain heap property
+                states.push({
+                    h: [...h], total: total, line: 22, pushed: cost, ws: `Pushed ${cost} back to Heap`,
+                    log: `<span class="log-success">heappush(${cost}): The combined stick was inserted back into the Heap!</span>`
+                });
+            }
+
+            states.push({
+                h: [...h], total: total, line: 24, ws: 'Finished',
+                log: `<span class="log-highlight">Algorithm Complete! Only 1 stick left. Total cost = ${total}.</span>`
+            });
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            totalVal.innerText = state.total;
+            workspaceText.innerHTML = state.ws;
+
+            // Render Heap
+            heapContainer.innerHTML = '<div class="ds-label">Min-Heap (sticks)</div>';
+            state.h.forEach(val => {
+                let extra = '';
+                if (state.pushed === val) extra = 'pushing';
+                heapContainer.innerHTML += `<div class="array-box ${extra}">${val}</div>`;
+            });
+
+            if (state.popped1 !== undefined) {
+                 heapContainer.innerHTML += `<div class="array-box popping">${state.popped1}</div>`;
+            }
+            if (state.popped2 !== undefined) {
+                 heapContainer.innerHTML += `<div class="array-box popping">${state.popped2}</div>`;
+            }
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>
