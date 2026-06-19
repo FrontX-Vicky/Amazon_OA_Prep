@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>State BFS Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --danger-color: #f85149;
+            --warning-color: #d29922;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header {
+            padding: 10px 20px; text-align: center;
+            border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+        }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; }
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 100px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+
+        /* Grid */
+        .grid-container {
+            display: grid; gap: 2px; justify-content: center; margin: 0 auto 15px auto;
+            background: var(--border-color); padding: 2px;
+        }
+        .cell {
+            width: 40px; height: 40px; background: #21262d; display: flex;
+            justify-content: center; align-items: center; font-size: 0.8rem; position: relative;
+            transition: all 0.2s;
+        }
+        .cell.obstacle { background: #4a2121; }
+        .cell.active { border: 2px solid var(--accent-color); z-index: 2; box-shadow: 0 0 10px var(--accent-color); }
+        .cell.neighbor { border: 2px solid var(--warning-color); z-index: 1; }
+        .cell.visited { background: rgba(88, 166, 255, 0.2); }
+        .cell .k-badge {
+            position: absolute; bottom: 2px; right: 2px; font-size: 0.55rem;
+            background: var(--success-color); color: white; padding: 1px 3px; border-radius: 4px; display: none;
+        }
+        .cell.visited .k-badge { display: block; }
+        .cell.start { box-shadow: inset 0 0 0 3px var(--success-color); }
+        .cell.end { box-shadow: inset 0 0 0 3px var(--danger-color); }
+
+        /* Queue & Visited Sets */
+        .ds-container {
+            display: flex; gap: 10px; min-height: 50px; padding: 15px;
+            border: 1px dashed var(--border-color); border-radius: 6px; position: relative; margin-bottom: 15px;
+            flex-wrap: wrap; align-items: flex-start;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        .queue-item { padding: 4px 8px; background: var(--accent-color); color: #fff; border-radius: 4px; font-size: 0.75rem; font-family: monospace; }
+        .queue-item.popped { background: var(--warning-color); opacity: 0; transform: translateY(-10px); transition: all 0.3s; }
+        .queue-item.new { background: var(--success-color); animation: flash 1s; }
+        
+        @keyframes flash { 0% { box-shadow: 0 0 10px var(--success-color); } 100% { box-shadow: none; } }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto;
+            font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-info { color: #8b949e; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-warning { color: var(--warning-color); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>State BFS Visualizer (LLM-Proof)</h2>
+        <p>Shortest Path in a Grid with Obstacles Elimination (Tracking state `k` instead of just position)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box">
+                    <div class="var-title">Max Allowed (K)</div>
+                    <div class="var-val">1</div>
+                </div>
+                <div class="var-box">
+                    <div class="var-title">Current Steps</div>
+                    <div class="var-val" id="steps-val">0</div>
+                </div>
+            </div>
+
+            <div class="grid-container" id="grid-container"></div>
+
+            <div class="ds-container" id="queue-container">
+                <div class="ds-label">Queue [(row, col, remaining_k, steps)]</div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">from</span> collections <span class="k-kw">import</span> <span class="k-typ">deque</span>',
+            '',
+            '<span class="k-kw">def</span> <span class="k-fn">shortestPath</span>(grid: <span class="k-typ">list</span>[<span class="k-typ">list</span>[<span class="k-typ">int</span>]], k: <span class="k-typ">int</span>) -> <span class="k-typ">int</span>:',
+            '    m, n = <span class="k-fn">len</span>(grid), <span class="k-fn">len</span>(grid[<span class="k-num">0</span>])',
+            '    ',
+            '    <span class="k-com"># Queue stores: (row, col, remaining_k, steps)</span>',
+            '    q = <span class="k-typ">deque</span>([(<span class="k-num">0</span>, <span class="k-num">0</span>, k, <span class="k-num">0</span>)])',
+            '    ',
+            '    <span class="k-com"># Visited stores: (row, col, remaining_k)</span>',
+            '    visited = <span class="k-fn">set</span>([(<span class="k-num">0</span>, <span class="k-num">0</span>, k)])',
+            '    ',
+            '    directions = [(<span class="k-num">0</span>, <span class="k-num">1</span>), (<span class="k-num">1</span>, <span class="k-num">0</span>), (<span class="k-num">0</span>, -<span class="k-num">1</span>), (-<span class="k-num">1</span>, <span class="k-num">0</span>)]',
+            '    ',
+            '    <span class="k-kw">while</span> q:',
+            '        r, c, curr_k, steps = q.popleft()',
+            '        ',
+            '        <span class="k-kw">if</span> r == m - <span class="k-num">1</span> <span class="k-kw">and</span> c == n - <span class="k-num">1</span>:',
+            '            <span class="k-kw">return</span> steps',
+            '            ',
+            '        <span class="k-kw">for</span> dr, dc <span class="k-kw">in</span> directions:',
+            '            nr, nc = r + dr, c + dc',
+            '            ',
+            '            <span class="k-kw">if</span> <span class="k-num">0</span> <= nr < m <span class="k-kw">and</span> <span class="k-num">0</span> <= nc < n:',
+            '                <span class="k-com"># Obstacles cost 1 k</span>',
+            '                next_k = curr_k - grid[nr][nc]',
+            '                ',
+            '                <span class="k-kw">if</span> next_k >= <span class="k-num">0</span> <span class="k-kw">and</span> (nr, nc, next_k) <span class="k-kw">not in</span> visited:',
+            '                    visited.add((nr, nc, next_k))',
+            '                    q.append((nr, nc, next_k, steps + <span class="k-num">1</span>))',
+            '                    ',
+            '    <span class="k-kw">return</span> -<span class="k-num">1</span>'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Grid Data (A simplified version of Example 1 to keep BFS visually concise)
+        const grid = [
+            [0,1,0],
+            [0,1,0],
+            [0,0,0]
+        ];
+        const K = 1;
+        const M = grid.length;
+        const N = grid[0].length;
+
+        const gridContainer = document.getElementById('grid-container');
+        gridContainer.style.gridTemplateColumns = `repeat(${N}, 40px)`;
+        gridContainer.style.gridTemplateRows = `repeat(${M}, 40px)`;
+
+        function initGrid() {
+            gridContainer.innerHTML = '';
+            for (let r = 0; r < M; r++) {
+                for (let c = 0; c < N; c++) {
+                    const isStart = r===0 && c===0;
+                    const isEnd = r===M-1 && c===N-1;
+                    const isObs = grid[r][c] === 1;
+                    
+                    let extra = isStart ? 'start' : isEnd ? 'end' : '';
+                    if(isObs) extra += ' obstacle';
+                    
+                    gridContainer.innerHTML += `
+                        <div class="cell ${extra}" id="c-${r}-${c}">
+                            ${isStart ? 'S' : isEnd ? 'E' : isObs ? 'X' : ''}
+                            <span class="k-badge" id="k-${r}-${c}"></span>
+                        </div>`;
+                }
+            }
+        }
+
+        // BFS Engine to generate states
+        let states = [];
+        let currentStateIdx = -1;
+
+        function generateStates() {
+            states = [];
+            let q = [{r:0, c:0, k:K, s:0}];
+            let visited = new Set(['0,0,'+K]);
+            let bestKAtCell = {}; // To show badge on cell
+            bestKAtCell['0,0'] = K;
+
+            states.push({
+                q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: null, line: 10,
+                log: `<span class="log-info">Initialized Queue with start node and allowed k=${K}.</span>`
+            });
+
+            const dirs = [[0,1], [1,0], [0,-1], [-1,0]];
+
+            while(q.length > 0) {
+                let curr = q.shift(); // popleft
+                
+                states.push({
+                    q: [...q], popped: curr, visited: new Set(visited), bestK: {...bestKAtCell}, curr: curr, line: 15,
+                    log: `<span class="log-highlight">Popped (r=${curr.r}, c=${curr.c}) with remaining k=${curr.k}. Steps=${curr.s}</span>`
+                });
+
+                if (curr.r === M-1 && curr.c === N-1) {
+                    states.push({
+                        q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: curr, line: 18,
+                        log: `<span class="log-success">Reached Target (E)! Minimum steps = ${curr.s}.</span>`
+                    });
+                    break; // stop generating
+                }
+
+                states.push({
+                    q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: curr, line: 20,
+                    log: `<span class="log-info">Checking 4 neighbors...</span>`
+                });
+
+                for (let d of dirs) {
+                    let nr = curr.r + d[0];
+                    let nc = curr.c + d[1];
+
+                    if (nr >= 0 && nr < M && nc >= 0 && nc < N) {
+                        let isObs = grid[nr][nc] === 1;
+                        let nextK = curr.k - (isObs ? 1 : 0);
+
+                        states.push({
+                            q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: curr, 
+                            neighbor: {r:nr, c:nc}, line: 25,
+                            log: `Neighbor (${nr},${nc}) is ${isObs ? 'an Obstacle' : 'Empty'}. <span class="log-warning">Next k will be ${nextK}</span>.`
+                        });
+
+                        let stateKey = `${nr},${nc},${nextK}`;
+
+                        if (nextK >= 0) {
+                            if (!visited.has(stateKey)) {
+                                visited.add(stateKey);
+                                q.push({r:nr, c:nc, k:nextK, s:curr.s+1});
+                                
+                                if (bestKAtCell[`${nr},${nc}`] === undefined || nextK > bestKAtCell[`${nr},${nc}`]) {
+                                    bestKAtCell[`${nr},${nc}`] = nextK;
+                                }
+
+                                states.push({
+                                    q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: curr, 
+                                    added: {r:nr, c:nc}, line: 28,
+                                    log: `<span class="log-success">State (${nr},${nc}, k=${nextK}) NOT visited. Adding to Queue!</span>`
+                                });
+                            } else {
+                                states.push({
+                                    q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: curr, 
+                                    neighbor: {r:nr, c:nc}, line: 27,
+                                    log: `<span class="log-danger">State (${nr},${nc}, k=${nextK}) ALREADY visited. Skipping.</span>`
+                                });
+                            }
+                        } else {
+                            states.push({
+                                q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: curr, 
+                                neighbor: {r:nr, c:nc}, line: 27,
+                                log: `<span class="log-danger">Next k < 0 (Too many obstacles destroyed). Cannot pass!</span>`
+                            });
+                        }
+                    }
+                }
+            }
+            if (states[states.length-1].line !== 18) {
+                states.push({
+                    q: [...q], visited: new Set(visited), bestK: {...bestKAtCell}, curr: null, line: 31,
+                    log: `<span class="log-danger">Queue Empty. Target Unreachable! Return -1.</span>`
+                });
+            }
+        }
+
+        // UI Renderer
+        const logContainer = document.getElementById('log');
+        const qContainer = document.getElementById('queue-container');
+        const stepsVal = document.getElementById('steps-val');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            // Steps
+            stepsVal.innerText = state.curr ? state.curr.s : 0;
+
+            // Clean Grid
+            document.querySelectorAll('.cell').forEach(c => {
+                c.classList.remove('active', 'neighbor', 'visited');
+                c.querySelector('.k-badge').innerText = '';
+            });
+
+            // Reapply visited and best K
+            for (let key in state.bestK) {
+                const parts = key.split(',');
+                const cId = `c-${parts[0]}-${parts[1]}`;
+                const el = document.getElementById(cId);
+                if(el) {
+                    el.classList.add('visited');
+                    el.querySelector('.k-badge').innerText = `k=${state.bestK[key]}`;
+                }
+            }
+
+            // Highlights
+            if (state.curr) document.getElementById(`c-${state.curr.r}-${state.curr.c}`).classList.add('active');
+            if (state.neighbor) document.getElementById(`c-${state.neighbor.r}-${state.neighbor.c}`).classList.add('neighbor');
+            if (state.added) document.getElementById(`c-${state.added.r}-${state.added.c}`).classList.add('neighbor'); // Highlight new additions briefly
+
+            // Queue
+            qContainer.innerHTML = '<div class="ds-label">Queue [(r, c, k, steps)]</div>';
+            
+            if (state.popped) {
+                qContainer.innerHTML += `<div class="queue-item popped">(${state.popped.r},${state.popped.c}, ${state.popped.k}, ${state.popped.s})</div>`;
+            }
+
+            state.q.forEach((item, i) => {
+                // If it's the last item and we just added it, animate
+                let extra = (state.added && i === state.q.length - 1) ? 'new' : '';
+                qContainer.innerHTML += `<div class="queue-item ${extra}">(${item.r},${item.c}, ${item.k}, ${item.s})</div>`;
+            });
+
+            // Code Highlight
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        initGrid();
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>
