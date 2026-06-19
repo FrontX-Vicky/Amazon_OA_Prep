@@ -27,17 +27,12 @@ def numIslands(grid: list[list[str]]) -> int:
 
 
     def dfs(grid, r, c):
-        if r < 0 or r >= rows and c < 0 or c >= cols:
-            return 
-        if r == '0':
-            return
-        
-        grid[r][c] = 0
-
-        dfs(grid, r+1, c)
-        dfs(grid, r-1, c)
-        dfs(grid, r, c+1)
-        dfs(grid, r, c-1)
+        if  0 <= r < rows and 0 <= c < cols and grid[r][c] == "1":
+            grid[r][c] = "0"
+            dfs(grid, r+1, c)
+            dfs(grid, r-1, c)
+            dfs(grid, r, c+1)
+            dfs(grid, r, c-1)
 
     for r in range(rows):
         for c in range(cols):

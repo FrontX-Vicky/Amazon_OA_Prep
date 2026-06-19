@@ -16,4 +16,18 @@ def maxArea(height: list[int]) -> int:
     # TODO: Implement your solution here
     # Hint: Use a Two Pointer approach (left and right). 
     # Calculate the area, update the max area, and then move the pointer that points to the shorter line.
-    pass
+    left, right = 0, len(height) - 1
+    max_area = 0
+
+    while left < right:
+        # Calculate the area
+        area = (right-left) * min(height[left], height[right])
+        # Update the max area
+        max_area = max(max_area, area)
+        # Move the pointer that points to the shorter line
+        if height[left] < height[right]:
+            left += 1
+        else:
+            right -= 1
+            
+    return max_area
