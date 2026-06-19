@@ -28,13 +28,45 @@
         h1 { margin-bottom: 0.5rem; }
         .subtitle { color: #94a3b8; margin-bottom: 2rem; }
 
+        .main-wrapper {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1400px;
+            align-items: flex-start;
+        }
+
         .container {
             background-color: var(--card-bg);
             padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 900px;
+            flex: 1;
+        }
+
+        .code-container {
+            flex: 1;
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            font-family: monospace;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .code-line {
+            padding: 2px 8px;
+            border-radius: 4px;
+            border-left: 4px solid transparent;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .code-line.active {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-left-color: var(--accent-color);
         }
 
         .vars-container {
@@ -180,39 +212,60 @@
     <h1>Monotonic Deque (Shortest Subarray)</h1>
     <div class="subtitle">Finding shortest subarray with sum >= K when array contains negative numbers</div>
 
-    <div class="container">
-        <div class="vars-container">
-            <div class="var-box">
-                <div>Target (K)</div>
-                <div class="var-value">3</div>
+    <div class="main-wrapper">
+        <!-- Visualizer Column -->
+        <div class="container">
+            <div class="vars-container">
+                <div class="var-box">
+                    <div>Target (K)</div>
+                    <div class="var-value">3</div>
+                </div>
+                <div class="var-box">
+                    <div>Shortest Subarray</div>
+                    <div class="var-value" id="shortest-val">∞</div>
+                </div>
             </div>
-            <div class="var-box">
-                <div>Shortest Subarray</div>
-                <div class="var-value" id="shortest-val">∞</div>
+
+            <h3>Original Array (nums)</h3>
+            <div class="array-container" id="nums-container"></div>
+
+            <h3>Prefix Sum Array (prefix_sum)</h3>
+            <div class="array-container" id="prefix-container"></div>
+
+            <div class="deque-container" id="deque-container">
+                <div class="deque-label">Monotonic Deque (Stores Indices)</div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+
+            <div class="controls">
+                <button id="prev-btn" disabled>Previous Step</button>
+                <button id="next-btn">Next Step</button>
+                <button id="reset-btn">Reset</button>
             </div>
         </div>
 
-        <h3>Original Array (nums)</h3>
-        <div class="array-container" id="nums-container">
-            <!-- Populated by JS -->
-        </div>
-
-        <h3>Prefix Sum Array (prefix_sum)</h3>
-        <div class="array-container" id="prefix-container">
-            <!-- Populated by JS -->
-        </div>
-
-        <div class="deque-container" id="deque-container">
-            <div class="deque-label">Monotonic Deque (Stores Indices)</div>
-            <!-- Populated by JS -->
-        </div>
-
-        <div class="log-container" id="log"></div>
-
-        <div class="controls">
-            <button id="prev-btn" disabled>Previous Step</button>
-            <button id="next-btn">Next Step</button>
-            <button id="reset-btn">Reset</button>
+        <!-- Code Column -->
+        <div class="code-container" id="code-block">
+<div class="code-line" id="line-1">def shortestSubarray(nums: list[int], k: int) -> int:</div>
+<div class="code-line" id="line-2">    n = len(nums)</div>
+<div class="code-line" id="line-3">    prefix_sum = [0] * (n + 1)</div>
+<div class="code-line" id="line-4">    for i in range(n):</div>
+<div class="code-line" id="line-5">        prefix_sum[i + 1] = prefix_sum[i] + nums[i]</div>
+<div class="code-line" id="line-6"></div>
+<div class="code-line" id="line-7">    q = deque()</div>
+<div class="code-line" id="line-8">    shortest = float('inf')</div>
+<div class="code-line" id="line-9"></div>
+<div class="code-line" id="line-10">    for i in range(n + 1):</div>
+<div class="code-line" id="line-11">        while q and prefix_sum[i] - prefix_sum[q[0]] >= k:</div>
+<div class="code-line" id="line-12">            shortest = min(shortest, i - q.popleft())</div>
+<div class="code-line" id="line-13"></div>
+<div class="code-line" id="line-14">        while q and prefix_sum[i] <= prefix_sum[q[-1]]:</div>
+<div class="code-line" id="line-15">            q.pop()</div>
+<div class="code-line" id="line-16"></div>
+<div class="code-line" id="line-17">        q.append(i)</div>
+<div class="code-line" id="line-18"></div>
+<div class="code-line" id="line-19">    return shortest if shortest != float('inf') else -1</div>
         </div>
     </div>
 
@@ -267,6 +320,7 @@
                 i: -1,
                 q: [...q],
                 shortest: shortest,
+                line: 'line-3',
                 log: `<span class="log-info">Initialized prefix sum array. Starting Monotonic Deque logic.</span>`
             });
 
@@ -275,6 +329,7 @@
                     i: i,
                     q: [...q],
                     shortest: shortest,
+                    line: 'line-10',
                     log: `<span class="log-highlight">--- Processing index ${i} (prefix_sum[${i}] = ${prefixSum[i]}) ---</span>`
                 });
 
@@ -283,6 +338,7 @@
                     i: i,
                     q: [...q],
                     shortest: shortest,
+                    line: 'line-11',
                     log: `<span class="log-info">Loop A: Check if prefix_sum[${i}] - prefix_sum[q[0]] >= ${k}</span>`
                 });
 
@@ -296,6 +352,7 @@
                         q: [...q],
                         shortest: shortest,
                         matchedFront: true,
+                        line: 'line-12',
                         log: `<span class="log-success">SUCCESS! ${prefixSum[i]} - ${prefixSum[poppedIdx]} = ${diff} (>= ${k}). Found valid subarray of length ${dist}.</span>`
                     });
                     
@@ -310,7 +367,17 @@
                         q: [...q],
                         shortest: shortest,
                         poppedFront: poppedIdx,
+                        line: 'line-12',
                         log: `<span class="log-info">Popped front index ${poppedIdx} because we want shortest array. We never need it again.</span>`
+                    });
+
+                    // Check again
+                    states.push({
+                        i: i,
+                        q: [...q],
+                        shortest: shortest,
+                        line: 'line-11',
+                        log: `<span class="log-info">Loop A: Check again if prefix_sum[${i}] - prefix_sum[q[0]] >= ${k}</span>`
                     });
                 }
                 
@@ -319,6 +386,7 @@
                         i: i,
                         q: [...q],
                         shortest: shortest,
+                        line: 'line-11',
                         log: `<span class="log-info">Condition not met: ${prefixSum[i]} - ${prefixSum[q[0]]} < ${k}. Move to Step B.</span>`
                     });
                 }
@@ -328,6 +396,7 @@
                     i: i,
                     q: [...q],
                     shortest: shortest,
+                    line: 'line-14',
                     log: `<span class="log-info">Loop B: Maintain strictly increasing order. Check if prefix_sum[${i}] <= prefix_sum[q[-1]]</span>`
                 });
 
@@ -337,6 +406,7 @@
                         i: i,
                         q: [...q],
                         shortest: shortest,
+                        line: 'line-15',
                         log: `<span class="log-danger">WARNING: prefix_sum[${i}] (${prefixSum[i]}) <= prefix_sum[${backIdx}] (${prefixSum[backIdx]}). Index ${backIdx} is useless now!</span>`
                     });
                     
@@ -347,7 +417,17 @@
                         q: [...q],
                         shortest: shortest,
                         poppedBack: backIdx,
+                        line: 'line-15',
                         log: `<span class="log-info">Popped back index ${backIdx}. Current index ${i} dominates it.</span>`
+                    });
+
+                    // Check again
+                    states.push({
+                        i: i,
+                        q: [...q],
+                        shortest: shortest,
+                        line: 'line-14',
+                        log: `<span class="log-info">Loop B: Check again if prefix_sum[${i}] <= prefix_sum[q[-1]]</span>`
                     });
                 }
                 
@@ -356,6 +436,7 @@
                         i: i,
                         q: [...q],
                         shortest: shortest,
+                        line: 'line-14',
                         log: `<span class="log-info">Queue is strictly increasing. Proceeding to add current index.</span>`
                     });
                 }
@@ -366,6 +447,7 @@
                     i: i,
                     q: [...q],
                     shortest: shortest,
+                    line: 'line-17',
                     log: `<span class="log-success">Step C: Appended current index ${i} to Deque.</span>`
                 });
             }
@@ -374,6 +456,7 @@
                 i: -1,
                 q: [...q],
                 shortest: shortest,
+                line: 'line-19',
                 log: `<span class="log-highlight">Algorithm Complete! Shortest subarray length is ${shortest === Infinity ? -1 : shortest}.</span>`
             });
         }
@@ -389,6 +472,17 @@
             if (state.i >= 0) {
                 const activeEl = document.getElementById(`prefix-${state.i}`);
                 if (activeEl) activeEl.classList.add('active');
+            }
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const codeEl = document.getElementById(state.line);
+                if (codeEl) {
+                    codeEl.classList.add('active');
+                    // Optional: scroll code block into view if needed
+                    // codeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
             }
 
             // Render Deque
