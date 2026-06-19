@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Programming Visualizer (House Robber)</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --danger-color: #f85149;
+            --warning-color: #d29922;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 0; height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header {
+            padding: 10px 20px; text-align: center;
+            border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+        }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+        }
+
+        .code-panel {
+            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
+            overflow-y: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; }
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 100px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+
+        /* Houses Array */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .array-container { 
+            display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; 
+            padding: 15px; border: 1px dashed var(--border-color); border-radius: 6px; position: relative;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        
+        .house-box {
+            width: 50px; height: 60px; background: #21262d; border: 2px solid var(--border-color); border-radius: 6px 6px 0 0;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;
+            transition: all 0.3s;
+        }
+        .house-box::before {
+            content: ''; position: absolute; top: -15px; left: -2px; border-left: 27px solid transparent;
+            border-right: 27px solid transparent; border-bottom: 15px solid var(--border-color); transition: all 0.3s;
+        }
+        .house-box .val { font-weight: bold; font-size: 1.2rem; color: var(--success-color); z-index: 1;}
+        .house-box .idx { position: absolute; bottom: 2px; font-size: 0.6rem; color: #8b949e; }
+        
+        .house-box.target { border-color: var(--warning-color); box-shadow: 0 0 15px var(--warning-color); }
+        .house-box.target::before { border-bottom-color: var(--warning-color); }
+        .house-box.robbed { background: rgba(63, 185, 80, 0.2); border-color: var(--success-color); }
+        .house-box.robbed::before { border-bottom-color: var(--success-color); }
+        .house-box.skipped { opacity: 0.5; }
+
+        /* DP Array */
+        .dp-cell {
+            width: 50px; height: 40px; background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 1.1rem; position: relative; transition: all 0.3s;
+        }
+        .dp-cell .idx { position: absolute; bottom: 2px; font-size: 0.55rem; color: #8b949e; }
+        .dp-cell.target { border-color: var(--accent-color); box-shadow: 0 0 10px var(--accent-color); z-index: 2;}
+        .dp-cell.opt1 { border-color: var(--purple); background: rgba(188, 140, 255, 0.2); }
+        .dp-cell.opt2 { border-color: var(--success-color); background: rgba(63, 185, 80, 0.2); }
+        .dp-cell.updated { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-info { color: #8b949e; }
+        .log-success { color: var(--success-color); }
+        .log-danger { color: var(--danger-color); }
+        .log-warning { color: var(--warning-color); }
+        .log-purple { color: var(--purple); }
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>1D DP Visualizer (State Transition)</h2>
+        <p>House Robber (To Rob or To Skip?)</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+            </div>
+
+            <div class="array-container" id="houses-container">
+                <div class="ds-label">Houses Array (nums)</div>
+            </div>
+
+            <div class="dp-container" id="dp-container">
+                <div class="ds-label">DP Array (Max money stolen up to house 'i')</div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = [
+            '<span class="k-kw">def</span> <span class="k-fn">rob</span>(nums: <span class="k-typ">list</span>[<span class="k-typ">int</span>]) -> <span class="k-typ">int</span>:',
+            '    <span class="k-kw">if</span> <span class="k-kw">not</span> nums: <span class="k-kw">return</span> <span class="k-num">0</span>',
+            '    <span class="k-kw">if</span> <span class="k-fn">len</span>(nums) == <span class="k-num">1</span>: <span class="k-kw">return</span> nums[<span class="k-num">0</span>]',
+            '    ',
+            '    <span class="k-com"># dp[i] = max money you can steal up to house i</span>',
+            '    dp = [<span class="k-num">0</span>] * <span class="k-fn">len</span>(nums)',
+            '    ',
+            '    <span class="k-com"># Base Cases</span>',
+            '    dp[<span class="k-num">0</span>] = nums[<span class="k-num">0</span>]',
+            '    dp[<span class="k-num">1</span>] = <span class="k-fn">max</span>(nums[<span class="k-num">0</span>], nums[<span class="k-num">1</span>])',
+            '    ',
+            '    <span class="k-com"># State Transitions</span>',
+            '    <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(<span class="k-num">2</span>, <span class="k-fn">len</span>(nums)):',
+            '        <span class="k-com"># Option 1: Skip current house i. Keep money from i-1.</span>',
+            '        skip = dp[i - <span class="k-num">1</span>]',
+            '        ',
+            '        <span class="k-com"># Option 2: Rob current house i. Add to money from i-2.</span>',
+            '        rob_current = dp[i - <span class="k-num">2</span>] + nums[i]',
+            '        ',
+            '        <span class="k-com"># Take the maximum of the two options</span>',
+            '        dp[i] = <span class="k-fn">max</span>(skip, rob_current)',
+            '        ',
+            '    <span class="k-kw">return</span> dp[-<span class="k-num">1</span>]'
+        ];
+
+        const codeBlock = document.getElementById('code-block');
+        rawCode.forEach((line, idx) => {
+            codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                <div class="l-num">${idx+1}</div>
+                <div class="l-code">${line}</div>
+            </div>`;
+        });
+
+        // Problem Data
+        const nums = [2, 7, 9, 3, 1];
+        
+        const housesContainer = document.getElementById('houses-container');
+        nums.forEach((val, i) => {
+            housesContainer.innerHTML += `
+                <div class="house-box" id="house-${i}">
+                    <div class="val">$${val}</div>
+                    <div class="idx">i=${i}</div>
+                </div>`;
+        });
+
+        const dpContainer = document.getElementById('dp-container');
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function generateStates() {
+            states = [];
+            let dp = new Array(nums.length).fill(0);
+            
+            states.push({
+                dp: [...dp], i: '-', line: 6,
+                log: `<span class="log-info">Initialized DP array of size ${nums.length} with 0s.</span>`
+            });
+
+            // Base case 0
+            dp[0] = nums[0];
+            states.push({
+                dp: [...dp], i: 0, line: 9, robbed: [0],
+                log: `<span class="log-success">Base Case 0: dp[0] = nums[0] = ${nums[0]}.</span> (If there is only 1 house, rob it!)`
+            });
+
+            // Base case 1
+            dp[1] = Math.max(nums[0], nums[1]);
+            let robbedIdx = nums[0] > nums[1] ? [0] : [1];
+            states.push({
+                dp: [...dp], i: 1, line: 10, robbed: robbedIdx, opt1: 0, 
+                log: `<span class="log-success">Base Case 1: dp[1] = max(nums[0], nums[1]) = max(${nums[0]}, ${nums[1]}) = ${dp[1]}.</span>`
+            });
+
+            for (let i = 2; i < nums.length; i++) {
+                states.push({
+                    dp: [...dp], i: i, line: 13,
+                    log: `<span class="log-highlight">--- Solving for House i = ${i} ($${nums[i]}) ---</span>`
+                });
+
+                let skip = dp[i - 1];
+                states.push({
+                    dp: [...dp], i: i, opt1: i - 1, line: 15,
+                    log: `<span class="log-purple">Option 1 (Skip House ${i}):</span> We keep the max money up to house ${i-1}, which is <b>$${skip}</b>.`
+                });
+
+                let rob_current = dp[i - 2] + nums[i];
+                states.push({
+                    dp: [...dp], i: i, opt2: i - 2, houseTarget: i, line: 18,
+                    log: `<span class="log-success">Option 2 (Rob House ${i}):</span> We rob house ${i} ($${nums[i]}) PLUS the max money up to house ${i-2} ($${dp[i-2]}). Total = <b>$${rob_current}</b>.`
+                });
+
+                dp[i] = Math.max(skip, rob_current);
+                
+                let choiceStr = skip > rob_current ? 
+                    `<span class="log-purple">SKIPPING was better!</span> ($${skip} > $${rob_current})` : 
+                    `<span class="log-success">ROBBING was better!</span> ($${rob_current} >= $${skip})`;
+
+                states.push({
+                    dp: [...dp], i: i, updated: true, line: 21,
+                    log: `dp[${i}] = max(${skip}, ${rob_current}) = <b>$${dp[i]}</b>. ${choiceStr}`
+                });
+            }
+            
+            states.push({
+                dp: [...dp], i: '-', line: 23,
+                log: `<span class="log-highlight">Finished! The maximum amount we can rob is dp[-1] = $${dp[dp.length-1]}.</span>`
+            });
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function renderState(idx) {
+            const state = states[idx];
+            
+            // Render Houses
+            document.querySelectorAll('.house-box').forEach(el => {
+                el.classList.remove('target', 'robbed', 'skipped');
+            });
+
+            if (state.houseTarget !== undefined) {
+                document.getElementById(`house-${state.houseTarget}`).classList.add('target');
+            }
+            if (state.robbed !== undefined) {
+                state.robbed.forEach(rIdx => {
+                    document.getElementById(`house-${rIdx}`).classList.add('robbed');
+                });
+            }
+
+            // Render DP Array
+            dpContainer.innerHTML = '<div class="ds-label">DP Array (Max money stolen up to house "i")</div>';
+            state.dp.forEach((val, i) => {
+                let extra = '';
+                if (state.i === i) extra += ' target';
+                if (state.opt1 === i) extra += ' opt1';
+                if (state.opt2 === i) extra += ' opt2';
+                if (state.updated && state.i === i) extra += ' updated';
+                
+                dpContainer.innerHTML += `
+                    <div class="dp-cell ${extra}">
+                        ${val}
+                        <span class="idx">i=${i}</span>
+                    </div>`;
+            });
+
+            // Highlight Code Line
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            // Log
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        });
+
+        generateStates();
+        currentStateIdx = 0;
+        renderState(0);
+
+    </script>
+</body>
+</html>
