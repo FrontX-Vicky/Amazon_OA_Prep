@@ -24,14 +24,15 @@
         .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
 
         .visual-panel {
-            flex: 1.2; background-color: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow-y: auto;
+            width: 55%; min-width: 30%; max-width: 80%; resize: horizontal; overflow: auto;
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px;
         }
 
         .code-panel {
-            flex: 0.8; background-color: #1e1e1e; border: 1px solid var(--border-color);
-            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px;
-            overflow-y: auto; position: relative;
+            flex: 1; min-width: 20%; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;
+            overflow: auto; position: relative;
         }
 
         /* Variables */
@@ -95,7 +96,7 @@
 
         /* Syntax Highlighting */
         .code-container { padding: 15px 0; }
-        .code-line { display: flex; padding: 2px 0; line-height: 1.5; border-left: 3px solid transparent; }
+        .code-line { display: flex; padding: 0; line-height: 1.2; border-left: 3px solid transparent; }
         .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
         .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
         .l-code { white-space: pre; color: #d4d4d4; }
