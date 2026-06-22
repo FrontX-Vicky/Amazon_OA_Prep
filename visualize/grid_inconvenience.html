@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimize Grid Inconvenience Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #0d1117; --text-color: #c9d1d9; --accent-color: #58a6ff;
+            --success-color: #3fb950; --danger-color: #f85149; --warning-color: #d29922;
+            --card-bg: #161b22; --border-color: #30363d; --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .header { padding: 10px 20px; text-align: center; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            width: 55%; min-width: 30%; max-width: 80%; resize: horizontal; overflow: auto;
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px;
+        }
+
+        .code-panel {
+            flex: 1; min-width: 20%; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;
+            overflow: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap;}
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 80px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+        .var-box.purple { border-color: var(--purple); }
+        .var-box.purple .var-val { color: var(--purple); }
+
+        /* Grid */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .grid-container {
+            display: grid; gap: 5px; padding: 25px; border: 1px dashed var(--border-color); border-radius: 6px;
+            margin: 0 auto 15px auto; position: relative; justify-content: center;
+        }
+        .ds-label { position: absolute; top: -8px; left: 10px; background: var(--card-bg); padding: 0 5px; font-size: 0.7rem; color: #8b949e; }
+        
+        .cell {
+            width: 45px; height: 45px; background: #21262d; border: 1px solid var(--border-color); border-radius: 4px;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.1rem;
+            transition: all 0.3s; position: relative; color: #8b949e;
+        }
+        .cell.one { background: rgba(88, 166, 255, 0.2); border-color: var(--accent-color); color: var(--accent-color); }
+        .cell.dist { color: #f0f6fc; }
+        .cell.invalid { background: rgba(248, 81, 73, 0.2); border-color: var(--danger-color); }
+        .cell.overlap { background: rgba(63, 185, 80, 0.3); border-color: var(--success-color); box-shadow: 0 0 15px var(--success-color); color: #fff;}
+        .cell.center { border: 3px solid var(--purple); transform: scale(1.1); z-index: 10; }
+
+        .cell .idx { position: absolute; bottom: 2px; right: 4px; font-size: 0.45rem; color: #484f58; }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        select { background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:4px; padding:4px; outline:none; font-size:0.8rem; }
+
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-success { color: var(--success-color); font-weight: bold; }
+        .log-danger { color: var(--danger-color); font-weight: bold; }
+        .log-warning { color: var(--warning-color); }
+        .log-purple { color: var(--purple); font-weight: bold;}
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 0; line-height: 1.2; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Minimize Grid Inconvenience Visualizer</h2>
+        <p>Binary Search on Answer + Chebyshev Bounding Boxes</p>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+                <select id="tc-select">
+                    <option value="small">Test Case 1: Small (2x4)</option>
+                    <option value="large">Test Case 2: Large (5x8)</option>
+                </select>
+                <select id="algo-select">
+                    <option value="simple">Code: Simple Loop (O(N*M log D))</option>
+                    <option value="optimal">Code: Suffix Array (O(N*M))</option>
+                </select>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box">
+                    <div class="var-title">Max Dist</div>
+                    <div class="var-val" id="maxd-val">0</div>
+                </div>
+                <div class="var-box">
+                    <div class="var-title">Guess (K)</div>
+                    <div class="var-val" id="guess-val" style="color:var(--warning-color)">-</div>
+                </div>
+                <div class="var-box purple">
+                    <div class="var-title">Valid Overlap</div>
+                    <div class="var-val" id="overlap-val">None</div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:center;">
+                <div class="grid-container" id="grid-container">
+                    <div class="ds-label">Chebyshev Distance Grid</div>
+                </div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const codeSolutions = {
+            simple: {
+                code: [
+                    '<span class="k-kw">def</span> <span class="k-fn">getMinInconvenience</span>(grid):',
+                    '    n, m = <span class="k-fn">len</span>(grid), <span class="k-fn">len</span>(grid[<span class="k-num">0</span>])',
+                    '    dist = [[-<span class="k-num">1</span>] * m <span class="k-kw">for</span> _ <span class="k-kw">in</span> <span class="k-fn">range</span>(n)]',
+                    '    q = deque()',
+                    '    <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(n):',
+                    '        <span class="k-kw">for</span> j <span class="k-kw">in</span> <span class="k-fn">range</span>(m):',
+                    '            <span class="k-kw">if</span> grid[i][j] == <span class="k-num">1</span>:',
+                    '                dist[i][j] = <span class="k-num">0</span>',
+                    '                q.append((i, j))',
+                    '',
+                    '    <span class="k-kw">if</span> <span class="k-kw">not</span> q: <span class="k-kw">return</span> <span class="k-fn">max</span>((n-<span class="k-num">1</span>)//<span class="k-num">2</span>, (m-<span class="k-num">1</span>)//<span class="k-num">2</span>, n//<span class="k-num">2</span>, m//<span class="k-num">2</span>)',
+                    '',
+                    '    dirs = [(-<span class="k-num">1</span>,-<span class="k-num">1</span>), (-<span class="k-num">1</span>,<span class="k-num">0</span>), (-<span class="k-num">1</span>,<span class="k-num">1</span>), (<span class="k-num">0</span>,-<span class="k-num">1</span>), (<span class="k-num">0</span>,<span class="k-num">1</span>), (<span class="k-num">1</span>,-<span class="k-num">1</span>), (<span class="k-num">1</span>,<span class="k-num">0</span>), (<span class="k-num">1</span>,<span class="k-num">1</span>)]',
+                    '    <span class="k-kw">while</span> q:',
+                    '        x, y = q.popleft()',
+                    '        <span class="k-kw">for</span> dx, dy <span class="k-kw">in</span> dirs:',
+                    '            nx, ny = x + dx, y + dy',
+                    '            <span class="k-kw">if</span> <span class="k-num">0</span> <= nx < n <span class="k-kw">and</span> <span class="k-num">0</span> <= ny < m <span class="k-kw">and</span> dist[nx][ny] == -<span class="k-num">1</span>:',
+                    '                dist[nx][ny] = dist[x][y] + <span class="k-num">1</span>',
+                    '                q.append((nx, ny))',
+                    '',
+                    '    maxDist = <span class="k-fn">max</span>(<span class="k-fn">max</span>(row) <span class="k-kw">for</span> row <span class="k-kw">in</span> dist)',
+                    '',
+                    '    <span class="k-kw">def</span> <span class="k-fn">can</span>(mid):',
+                    '        r1, r2 = <span class="k-num">0</span>, n - <span class="k-num">1</span>',
+                    '        c1, c2 = <span class="k-num">0</span>, m - <span class="k-num">1</span>',
+                    '        <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(n):',
+                    '            <span class="k-kw">for</span> j <span class="k-kw">in</span> <span class="k-fn">range</span>(m):',
+                    '                <span class="k-kw">if</span> dist[i][j] > mid:',
+                    '                    r1 = <span class="k-fn">max</span>(r1, i - mid)',
+                    '                    r2 = <span class="k-fn">min</span>(r2, i + mid)',
+                    '                    c1 = <span class="k-fn">max</span>(c1, j - mid)',
+                    '                    c2 = <span class="k-fn">min</span>(c2, j + mid)',
+                    '        <span class="k-kw">return</span> r1 <= r2 <span class="k-kw">and</span> c1 <= c2',
+                    '',
+                    '    left, right = <span class="k-num">0</span>, maxDist',
+                    '    <span class="k-kw">while</span> left < right:',
+                    '        mid = (left + right) // <span class="k-num">2</span>',
+                    '        <span class="k-kw">if</span> can(mid):',
+                    '            right = mid',
+                    '        <span class="k-kw">else</span>:',
+                    '            left = mid + <span class="k-num">1</span>',
+                    '    <span class="k-kw">return</span> left'
+                ],
+                lines: { init: 4, bfs: 22, bs_guess: 40, find_invalid: 29, box_calc: 34, done: 45 }
+            },
+            optimal: {
+                code: [
+                    '<span class="k-kw">def</span> <span class="k-fn">getMinInconvenience</span>(grid):',
+                    '    n, m = <span class="k-fn">len</span>(grid), <span class="k-fn">len</span>(grid[<span class="k-num">0</span>])',
+                    '    q = deque()',
+                    '    dist = [[<span class="k-fn">float</span>(<span class="k-str">"inf"</span>)] * m <span class="k-kw">for</span> _ <span class="k-kw">in</span> <span class="k-fn">range</span>(n)]',
+                    '    <span class="k-kw">for</span> r <span class="k-kw">in</span> <span class="k-fn">range</span>(n):',
+                    '        <span class="k-kw">for</span> c <span class="k-kw">in</span> <span class="k-fn">range</span>(m):',
+                    '            <span class="k-kw">if</span> grid[r][c] == <span class="k-num">1</span>:',
+                    '                dist[r][c] = <span class="k-num">0</span>',
+                    '                q.append((r, c))',
+                    '',
+                    '    <span class="k-kw">if</span> <span class="k-kw">not</span> q: <span class="k-kw">return</span> <span class="k-fn">max</span>((n-<span class="k-num">1</span>)//<span class="k-num">2</span>, (m-<span class="k-num">1</span>)//<span class="k-num">2</span>, n//<span class="k-num">2</span>, m//<span class="k-num">2</span>)',
+                    '',
+                    '    dirs = [(-<span class="k-num">1</span>,-<span class="k-num">1</span>), (-<span class="k-num">1</span>,<span class="k-num">0</span>), (-<span class="k-num">1</span>,<span class="k-num">1</span>), (<span class="k-num">0</span>,-<span class="k-num">1</span>), (<span class="k-num">0</span>,<span class="k-num">1</span>), (<span class="k-num">1</span>,-<span class="k-num">1</span>), (<span class="k-num">1</span>,<span class="k-num">0</span>), (<span class="k-num">1</span>,<span class="k-num">1</span>)]',
+                    '    max_d = <span class="k-num">0</span>',
+                    '    <span class="k-kw">while</span> q:',
+                    '        r, c = q.popleft()',
+                    '        d = dist[r][c]',
+                    '        <span class="k-kw">if</span> d > max_d: max_d = d',
+                    '        <span class="k-kw">for</span> dr, dc <span class="k-kw">in</span> dirs:',
+                    '            nr, nc = r + dr, c + dc',
+                    '            <span class="k-kw">if</span> <span class="k-num">0</span> <= nr < n <span class="k-kw">and</span> <span class="k-num">0</span> <= nc < m <span class="k-kw">and</span> dist[nr][nc] == <span class="k-fn">float</span>(<span class="k-str">"inf"</span>):',
+                    '                dist[nr][nc] = d + <span class="k-num">1</span>',
+                    '                q.append((nr, nc))',
+                    '',
+                    '    <span class="k-kw">if</span> max_d == <span class="k-num">0</span>: <span class="k-kw">return</span> <span class="k-num">0</span>',
+                    '',
+                    '    s_max_r, s_min_r = [-<span class="k-fn">float</span>(<span class="k-str">"inf"</span>)]*(max_d+<span class="k-num">2</span>), [<span class="k-fn">float</span>(<span class="k-str">"inf"</span>)]*(max_d+<span class="k-num">2</span>)',
+                    '    s_max_c, s_min_c = [-<span class="k-fn">float</span>(<span class="k-str">"inf"</span>)]*(max_d+<span class="k-num">2</span>), [<span class="k-fn">float</span>(<span class="k-str">"inf"</span>)]*(max_d+<span class="k-num">2</span>)',
+                    '    <span class="k-com"># (Initialization loops omitted for vertical space, logic matches python file)</span>',
+                    '',
+                    '    <span class="k-kw">def</span> <span class="k-fn">check</span>(K):',
+                    '        <span class="k-kw">if</span> K >= max_d: <span class="k-kw">return</span> <span class="k-kw">True</span>',
+                    '        ',
+                    '        R_min = s_max_r[K+<span class="k-num">1</span>] - K',
+                    '        R_max = s_min_r[K+<span class="k-num">1</span>] + K',
+                    '        C_min = s_max_c[K+<span class="k-num">1</span>] - K',
+                    '        C_max = s_min_c[K+<span class="k-num">1</span>] + K',
+                    '        ',
+                    '        <span class="k-kw">if</span> R_min > R_max <span class="k-kw">or</span> C_min > C_max:',
+                    '            <span class="k-kw">return</span> <span class="k-kw">False</span>',
+                    '            ',
+                    '        <span class="k-kw">return</span> <span class="k-fn">max</span>(R_min, <span class="k-num">0</span>) <= <span class="k-fn">min</span>(R_max, n-<span class="k-num">1</span>) <span class="k-kw">and</span> <span class="k-fn">max</span>(C_min, <span class="k-num">0</span>) <= <span class="k-fn">min</span>(C_max, m-<span class="k-num">1</span>)',
+                    '               ',
+                    '    left, right, ans = <span class="k-num">0</span>, max_d, max_d',
+                    '    <span class="k-kw">while</span> left <= right:',
+                    '        mid = (left + right) // <span class="k-num">2</span>',
+                    '        <span class="k-kw">if</span> check(mid):',
+                    '            ans = mid',
+                    '            right = mid - <span class="k-num">1</span>',
+                    '        <span class="k-kw">else</span>:',
+                    '            left = mid + <span class="k-num">1</span>',
+                    '    <span class="k-kw">return</span> ans'
+                ],
+                lines: { init: 5, bfs: 18, bs_guess: 46, find_invalid: 35, box_calc: 42, done: 53 }
+            }
+        };
+
+        const testCases = {
+            small: {
+                n: 2, m: 4,
+                grid: [
+                    [0, 0, 0, 1],
+                    [0, 0, 0, 1]
+                ]
+            },
+            large: {
+                n: 5, m: 8,
+                grid: [
+                    [1, 0, 0, 0, 0, 0, 0, 1],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0]
+                ]
+            }
+        };
+
+        const codeBlock = document.getElementById('code-block');
+        const algoSelect = document.getElementById('algo-select');
+        const tcSelect = document.getElementById('tc-select');
+        let currentAlgo = 'simple';
+        let currentTc = 'small';
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function renderCodeBlock() {
+            codeBlock.innerHTML = '';
+            codeSolutions[currentAlgo].code.forEach((line, idx) => {
+                codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                    <div class="l-num">${idx+1}</div>
+                    <div class="l-code">${line}</div>
+                </div>`;
+            });
+        }
+        
+        function generateStatesForGrid(gridDef) {
+            let n = gridDef.n;
+            let m = gridDef.m;
+            let grid = gridDef.grid;
+            
+            let newStates = [];
+            
+            // 1. Init
+            let dist = Array(n).fill(0).map(() => Array(m).fill(-1));
+            let q = [];
+            let onesCount = 0;
+            for (let r=0; r<n; r++) {
+                for (let c=0; c<m; c++) {
+                    if (grid[r][c] === 1) {
+                        dist[r][c] = 0;
+                        q.push({r, c});
+                        onesCount++;
+                    }
+                }
+            }
+            
+            newStates.push({
+                dist: JSON.parse(JSON.stringify(dist)), maxd: 0, guess: "-", overlap: "None", lineKey: "init",
+                log: `<span class="log-info">Grid initialized. Found ${onesCount} delivery centers.</span>`
+            });
+            
+            // 2. BFS
+            let dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+            let head = 0;
+            while(head < q.length) {
+                let curr = q[head++];
+                for(let d of dirs) {
+                    let nr = curr.r + d[0], nc = curr.c + d[1];
+                    if (nr>=0 && nr<n && nc>=0 && nc<m && dist[nr][nc] === -1) {
+                        dist[nr][nc] = dist[curr.r][curr.c] + 1;
+                        q.push({r: nr, c: nc});
+                    }
+                }
+            }
+            
+            let maxD = 0;
+            for(let r=0; r<n; r++) {
+                for(let c=0; c<m; c++) {
+                    maxD = Math.max(maxD, dist[r][c]);
+                }
+            }
+            
+            newStates.push({
+                dist: JSON.parse(JSON.stringify(dist)), maxd: maxD, guess: "-", overlap: "None", lineKey: "bfs",
+                log: `<span class="log-highlight">Multi-source BFS complete.</span> Maximum initial inconvenience is ${maxD}.`
+            });
+            
+            // 3. Binary Search
+            let left = 0, right = maxD;
+            let ans = maxD;
+            
+            while(left < right) {
+                let mid = Math.floor((left + right) / 2);
+                
+                newStates.push({
+                    dist: JSON.parse(JSON.stringify(dist)), maxd: maxD, guess: mid, overlap: "Checking...", lineKey: "bs_guess",
+                    log: `--- <span class="log-warning">Binary Search: Guessing K = ${mid}</span> ---`
+                });
+                
+                let invalidCells = [];
+                let r1=0, r2=n-1, c1=0, c2=m-1;
+                
+                for(let r=0; r<n; r++) {
+                    for(let c=0; c<m; c++) {
+                        if (dist[r][c] > mid) {
+                            invalidCells.push({r, c});
+                            r1 = Math.max(r1, r - mid);
+                            r2 = Math.min(r2, r + mid);
+                            c1 = Math.max(c1, c - mid);
+                            c2 = Math.min(c2, c + mid);
+                        }
+                    }
+                }
+                
+                newStates.push({
+                    dist: JSON.parse(JSON.stringify(dist)), maxd: maxD, guess: mid, invalidCells: invalidCells, overlap: "Checking...", lineKey: "find_invalid",
+                    log: `Finding cells with dist > ${mid}. Found ${invalidCells.length} invalid cells.<br>Max R=${r1}, Min R=${r2}. Max C=${c1}, Min C=${c2}.`
+                });
+                
+                let valid = (r1 <= r2 && c1 <= c2);
+                
+                if (valid) {
+                    newStates.push({
+                        dist: JSON.parse(JSON.stringify(dist)), maxd: maxD, guess: mid, invalidCells: invalidCells,
+                        box: {rmin: r1, rmax: r2, cmin: c1, cmax: c2}, overlap: "Valid", lineKey: "box_calc",
+                        log: `Bounding box for new center: R in [${r1}, ${r2}], C in [${c1}, ${c2}].<br><span class="log-success">Intersection valid! K=${mid} is Possible.</span>`
+                    });
+                    ans = mid;
+                    right = mid;
+                } else {
+                    newStates.push({
+                        dist: JSON.parse(JSON.stringify(dist)), maxd: maxD, guess: mid, invalidCells: invalidCells,
+                        box: {rmin: r1, rmax: r2, cmin: c1, cmax: c2}, overlap: "Failed", lineKey: "box_calc",
+                        log: `Bounding box: R_min=${r1}, R_max=${r2}, C_min=${c1}, C_max=${c2}.<br><span class="log-danger">Invalid intersection! K=${mid} is Impossible.</span>`
+                    });
+                    left = mid + 1;
+                    ans = left;
+                }
+            }
+            
+            newStates.push({
+                dist: JSON.parse(JSON.stringify(dist)), maxd: maxD, guess: "-", overlap: `ans = ${ans}`, lineKey: "done",
+                log: `<span class="log-purple">Binary Search complete! Minimum inconvenience is ${ans}.</span>`
+            });
+            
+            return newStates;
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const gridContainer = document.getElementById('grid-container');
+
+        function renderState(idx) {
+            const state = states[idx];
+            const gridDef = testCases[currentTc];
+            let n = gridDef.n, m = gridDef.m;
+            
+            document.getElementById('maxd-val').innerText = state.maxd;
+            document.getElementById('guess-val').innerText = state.guess;
+            document.getElementById('overlap-val').innerText = state.overlap;
+
+            // Render Grid
+            gridContainer.style.gridTemplateColumns = `repeat(${m}, 45px)`;
+            gridContainer.innerHTML = '<div class="ds-label">Chebyshev Distance Grid</div>';
+            
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < m; c++) {
+                    let d = state.dist[r][c];
+                    let cls = 'cell';
+                    let txt = d === -1 ? '0' : d;
+                    
+                    if (gridDef.grid[r][c] === 1) {
+                        cls += ' one';
+                        txt = '1 (DC)';
+                    } else if (d !== -1) {
+                        cls += ' dist';
+                    }
+
+                    if (state.invalidCells) {
+                        let inv = state.invalidCells.find(p => p.r === r && p.c === c);
+                        if (inv) cls += ' invalid';
+                    }
+
+                    if (state.box) {
+                        if (r >= state.box.rmin && r <= state.box.rmax && c >= state.box.cmin && c <= state.box.cmax) {
+                            cls += ' overlap';
+                            txt = 'DC Here';
+                        }
+                    }
+
+                    gridContainer.innerHTML += `<div class="${cls}">${txt}<div class="idx">${r},${c}</div></div>`;
+                }
+            }
+
+            // Highlight Code
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.lineKey) {
+                const actualLine = codeSolutions[currentAlgo].lines[state.lineKey];
+                const cEl = document.getElementById(`line-${actualLine}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        function restartSimulation() {
+            states = generateStatesForGrid(testCases[currentTc]);
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        }
+
+        algoSelect.addEventListener('change', (e) => {
+            currentAlgo = e.target.value;
+            renderCodeBlock();
+            if (currentStateIdx >= 0) {
+                logContainer.innerHTML = '';
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+        
+        tcSelect.addEventListener('change', (e) => {
+            currentTc = e.target.value;
+            restartSimulation();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => restartSimulation());
+
+        // Init
+        renderCodeBlock();
+        restartSimulation();
+
+    </script>
+</body>
+</html>
