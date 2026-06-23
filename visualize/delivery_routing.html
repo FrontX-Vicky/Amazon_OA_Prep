@@ -46,23 +46,23 @@
         /* Grid */
         h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
         .grid-container {
-            display: grid; gap: 6px; padding: 25px; border: 1px dashed var(--border-color); border-radius: 6px;
+            display: grid; gap: 4px; padding: 20px; border: 1px solid var(--border-color); border-radius: 4px;
             margin: 0 auto 15px auto; position: relative; justify-content: center; background: #0d1117;
         }
         
         .cell {
-            width: 55px; height: 55px; background: #21262d; border: 2px solid var(--border-color); border-radius: 6px;
+            width: 55px; height: 55px; background: #161b22; border: 1px solid #30363d; border-radius: 4px;
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            font-weight: bold; font-size: 1.2rem; position: relative; color: #8b949e; transition: all 0.2s;
+            font-size: 1.1rem; position: relative; color: #c9d1d9; font-family: monospace; transition: none;
         }
-        .cell-0 { background: #21262d; }
-        .cell-1 { background: #484f58; color: #000; text-decoration: line-through; }
-        .cell-S { background: rgba(88, 166, 255, 0.2); border-color: var(--accent-color); color: var(--accent-color); }
-        .cell-D { background: rgba(188, 140, 255, 0.2); border-color: var(--purple); color: var(--purple); }
-        .cell-C { background: rgba(210, 153, 34, 0.2); border-color: var(--warning-color); color: var(--warning-color); }
+        .cell-0 { background: #161b22; }
+        .cell-1 { background: #21262d; color: #484f58; }
+        .cell-S { color: var(--accent-color); font-weight: bold; }
+        .cell-D { color: var(--purple); font-weight: bold; }
+        .cell-C { color: var(--warning-color); font-weight: bold; }
 
-        .cell.active { transform: scale(1.1); box-shadow: 0 0 15px var(--accent-color); border-color: var(--accent-color); z-index: 10; color: #fff; background: var(--accent-color); }
-        .cell.visited-flash { background: rgba(63, 185, 80, 0.3); border-color: var(--success-color); }
+        .cell.active { border: 2px solid #f0f6fc; background: #21262d; color: #fff; z-index: 10; }
+        .cell.visited-flash { border-color: var(--success-color); }
 
         .cell .coord { position: absolute; top: 2px; left: 4px; font-size: 0.5rem; color: #8b949e; font-weight: normal; }
         .cell .visited-badge { position: absolute; bottom: 2px; right: 4px; font-size: 0.6rem; color: var(--success-color); font-weight: bold; }
