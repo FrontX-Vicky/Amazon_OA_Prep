@@ -3,30 +3,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Center Routing</title>
+    <title>Delivery Center Routing Visualizer</title>
     <style>
-        body { 
+        :root {
+            --bg-color: #0d1117; --text-color: #c9d1d9; --accent-color: #58a6ff;
+            --success-color: #3fb950; --danger-color: #f85149; --warning-color: #d29922;
+            --card-bg: #161b22; --border-color: #30363d; --purple: #bc8cff;
+        }
+
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0d1117; color: #c9d1d9; text-align: center; padding-top: 100px; 
-            line-height: 1.6;
+            background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
-        h1 { color: #ff7b72; font-size: 2rem; }
-        .card {
-            background: #161b22; border: 1px solid #30363d; border-radius: 8px;
-            padding: 30px; max-width: 600px; margin: 0 auto;
+
+        .header { padding: 10px 20px; text-align: center; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .header h2 { margin: 0; font-size: 1.2rem; color: #f0f6fc; }
+        .header p { margin: 5px 0 0; font-size: 0.8rem; color: #8b949e; }
+
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+
+        .visual-panel {
+            width: 55%; min-width: 30%; max-width: 80%; resize: horizontal; overflow: auto;
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; display: flex; flex-direction: column; padding: 15px;
         }
-        a { color: #58a6ff; text-decoration: none; font-weight: bold; }
-        a:hover { text-decoration: underline; }
+
+        .code-panel {
+            flex: 1; min-width: 20%; background-color: #1e1e1e; border: 1px solid var(--border-color);
+            border-radius: 8px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;
+            overflow: auto; position: relative;
+        }
+
+        /* Variables */
+        .vars-container { display: flex; gap: 15px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap;}
+        .var-box { background: #21262d; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; text-align: center; min-width: 80px; }
+        .var-title { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+        .var-val { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); }
+        .var-box.purple { border-color: var(--purple); }
+        .var-box.purple .var-val { color: var(--purple); }
+
+        /* Grid */
+        h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #8b949e; text-align: center; }
+        .grid-container {
+            display: grid; gap: 6px; padding: 25px; border: 1px dashed var(--border-color); border-radius: 6px;
+            margin: 0 auto 15px auto; position: relative; justify-content: center; background: #0d1117;
+        }
+        
+        .cell {
+            width: 55px; height: 55px; background: #21262d; border: 2px solid var(--border-color); border-radius: 6px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            font-weight: bold; font-size: 1.2rem; position: relative; color: #8b949e; transition: all 0.2s;
+        }
+        .cell-0 { background: #21262d; }
+        .cell-1 { background: #484f58; color: #000; text-decoration: line-through; }
+        .cell-S { background: rgba(88, 166, 255, 0.2); border-color: var(--accent-color); color: var(--accent-color); }
+        .cell-D { background: rgba(188, 140, 255, 0.2); border-color: var(--purple); color: var(--purple); }
+        .cell-C { background: rgba(210, 153, 34, 0.2); border-color: var(--warning-color); color: var(--warning-color); }
+
+        .cell.active { transform: scale(1.1); box-shadow: 0 0 15px var(--accent-color); border-color: var(--accent-color); z-index: 10; color: #fff; background: var(--accent-color); }
+        .cell.visited-flash { background: rgba(63, 185, 80, 0.3); border-color: var(--success-color); }
+
+        .cell .coord { position: absolute; top: 2px; left: 4px; font-size: 0.5rem; color: #8b949e; font-weight: normal; }
+        .cell .visited-badge { position: absolute; bottom: 2px; right: 4px; font-size: 0.6rem; color: var(--success-color); font-weight: bold; }
+
+        /* Controls & Log */
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+        button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        button:hover { background: #2ea043; }
+        button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        select { background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:4px; padding:4px; outline:none; font-size:0.8rem; }
+
+        .log-container {
+            flex: 1; background: #010409; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; line-height: 1.4;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1f2428; padding-bottom: 4px; }
+        .log-highlight { color: #58a6ff; font-weight: bold; }
+        .log-success { color: var(--success-color); font-weight: bold; }
+        .log-danger { color: var(--danger-color); font-weight: bold; }
+        .log-warning { color: var(--warning-color); font-weight: bold; }
+        .log-purple { color: var(--purple); font-weight: bold;}
+
+        /* Syntax Highlighting */
+        .code-container { padding: 15px 0; }
+        .code-line { display: flex; padding: 0; line-height: 1.2; border-left: 3px solid transparent; }
+        .code-line.active { background-color: rgba(88, 166, 255, 0.15); border-left-color: var(--accent-color); }
+        .l-num { width: 40px; min-width: 40px; text-align: right; padding-right: 15px; color: #858585; user-select: none; }
+        .l-code { white-space: pre; color: #d4d4d4; }
+        .k-kw { color: #c586c0; } .k-fn { color: #dcdcaa; } .k-typ { color: #4ec9b0; }
+        .k-num { color: #b5cea8; } .k-str { color: #ce9178; } .k-com { color: #6a9955; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>🚧 Visualizer Under Construction 🚧</h1>
-        <p>I left this visualizer intentionally blank for now so I don't spoil the answer for you!</p>
-        <p>Your goal is to solve the puzzle in <b>delivery_routing.py</b> first and see if you can figure out how to modify the <code>visited</code> set.</p>
-        <p>Once you solve it (or if you get stuck and we need to debug), let me know and I'll populate this visualizer to show exactly how the battery state traverses the grid.</p>
-        <br><br>
-        <a href="index.html">◀ Back to Dashboard</a>
+
+    <div class="header">
+        <h2>Delivery Center Routing Visualizer</h2>
+        <p>State-Space BFS with Dynamic Battery Costs</p>
     </div>
+
+    <div class="main-wrapper">
+        <div class="visual-panel">
+            <div class="controls">
+                <button id="prev-btn" disabled>◀ Prev Step</button>
+                <button id="next-btn">Next Step ▶</button>
+                <button id="reset-btn" style="background:#21262d; border:1px solid #30363d">Reset</button>
+                <select id="tc-select">
+                    <option value="revisit">Test 1: The "Twist" (Dead-end Charger)</option>
+                    <option value="needs_charger">Test 2: Basic Charger Path</option>
+                </select>
+            </div>
+
+            <div class="vars-container">
+                <div class="var-box">
+                    <div class="var-title">Popped Cell</div>
+                    <div class="var-val" id="pop-val">-</div>
+                </div>
+                <div class="var-box">
+                    <div class="var-title">Car Battery</div>
+                    <div class="var-val" id="bat-val" style="color:var(--success-color)">-</div>
+                </div>
+                <div class="var-box purple">
+                    <div class="var-title">Queue Size</div>
+                    <div class="var-val" id="queue-val">0</div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:center;">
+                <div class="grid-container" id="grid-container"></div>
+            </div>
+
+            <div class="log-container" id="log"></div>
+        </div>
+
+        <div class="code-panel">
+            <div class="code-container" id="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        const rawCode = `
+<span class="k-kw">def</span> <span class="k-fn">minDeliveryTime</span>(grid: <span class="k-fn">list</span>[<span class="k-fn">list</span>[<span class="k-fn">str</span>]], B: <span class="k-fn">int</span>) -> <span class="k-fn">int</span>:
+    rows, cols = <span class="k-fn">len</span>(grid), <span class="k-fn">len</span>(grid[<span class="k-num">0</span>])
+    start, destination = <span class="k-kw">None</span>, <span class="k-kw">None</span>
+    q = deque()
+    visited = {}
+
+    <span class="k-kw">for</span> i <span class="k-kw">in</span> <span class="k-fn">range</span>(rows):
+        <span class="k-kw">for</span> j <span class="k-kw">in</span> <span class="k-fn">range</span>(cols):
+            <span class="k-kw">if</span> grid[i][j] == <span class="k-str">'D'</span>: destination = (i, j)
+            <span class="k-kw">if</span> grid[i][j] == <span class="k-str">'S'</span>:
+                start = (i, j, B, <span class="k-num">0</span>)
+                visited[(i, j)] = B
+                q.append(start)
+
+    directions = [(<span class="k-num">0</span>,<span class="k-num">1</span>), (<span class="k-num">0</span>,-<span class="k-num">1</span>), (-<span class="k-num">1</span>,<span class="k-num">0</span>), (<span class="k-num">1</span>,<span class="k-num">0</span>)]
+
+    <span class="k-kw">while</span> q:
+        x, y, b, s = q.popleft()
+      
+        <span class="k-kw">if</span> grid[x][y] == <span class="k-str">'D'</span>:
+            <span class="k-kw">return</span> s 
+        
+        <span class="k-kw">for</span> dx, dy <span class="k-kw">in</span> directions:
+            nx, ny = dx + x, dy + y
+            next_b = b - <span class="k-num">1</span>
+            next_s = s + <span class="k-num">1</span>
+
+            <span class="k-kw">if</span> <span class="k-num">0</span> <= nx < rows <span class="k-kw">and</span> <span class="k-num">0</span> <= ny < cols <span class="k-kw">and</span> grid[nx][ny] != <span class="k-str">'1'</span> <span class="k-kw">and</span> grid[nx][ny] != <span class="k-str">'S'</span>:
+                <span class="k-kw">if</span> next_b < <span class="k-num">0</span>: <span class="k-kw">continue</span>
+                <span class="k-kw">if</span> grid[nx][ny] == <span class="k-str">'C'</span>: next_b = B
+                
+                <span class="k-com"># Only explore this cell if we arrive with MORE battery than before</span>
+                <span class="k-kw">if</span> next_b > visited.get((nx, ny), -<span class="k-num">1</span>):
+                    visited[(nx, ny)] = next_b
+                    q.append((nx, ny, next_b, next_s))
+
+    <span class="k-kw">return</span> -<span class="k-num">1</span>
+`;
+
+        const testCases = {
+            revisit: {
+                B: 3,
+                grid: [
+                    ['S', '0', '0', '0', 'D'],
+                    ['1', '1', 'C', '1', '1']
+                ]
+            },
+            needs_charger: {
+                B: 4,
+                grid: [
+                    ['S', '0', 'C'],
+                    ['1', '1', '0'],
+                    ['D', '0', '0']
+                ]
+            }
+        };
+
+        const codeBlock = document.getElementById('code-block');
+        const tcSelect = document.getElementById('tc-select');
+        let currentTc = 'revisit';
+        
+        let states = [];
+        let currentStateIdx = -1;
+
+        function renderCodeBlock() {
+            codeBlock.innerHTML = '';
+            let lines = rawCode.trim().split('\n');
+            lines.forEach((line, idx) => {
+                codeBlock.innerHTML += `<div class="code-line" id="line-${idx+1}">
+                    <div class="l-num">${idx+1}</div>
+                    <div class="l-code">${line || ' '}</div>
+                </div>`;
+            });
+        }
+        
+        function generateStatesForGrid(tc) {
+            let grid = tc.grid;
+            let B = tc.B;
+            let rows = grid.length;
+            let cols = grid[0].length;
+            let start = null;
+            let dest = null;
+            for(let r=0; r<rows; r++){
+                for(let c=0; c<cols; c++){
+                    if(grid[r][c] === 'S') start = {r,c,b:B,s:0};
+                    if(grid[r][c] === 'D') dest = {r,c};
+                }
+            }
+            
+            let q = [start];
+            let visited = {};
+            visited[`${start.r},${start.c}`] = B;
+            
+            let newStates = [];
+            newStates.push({
+                log: `<span class="log-info">Initialized BFS from S(${start.r}, ${start.c}) with max battery B=${B}.</span>`,
+                pos: null, visited: {...visited}, queue: [...q], ans: null, line: 11
+            });
+            
+            let dirs = [[0,1], [0,-1], [-1,0], [1,0]];
+            
+            while(q.length > 0) {
+                let curr = q.shift();
+                let r = curr.r, c = curr.c, b = curr.b, s = curr.s;
+                
+                let stateObj = {
+                    log: `<span class="log-highlight">Popped (${r}, ${c})</span> at step ${s} with Battery <span class="log-success">${b}</span>.`,
+                    pos: {r, c, b, s}, visited: {...visited}, queue: [...q], ans: null, line: 17
+                };
+                
+                if (grid[r][c] === 'D') {
+                    stateObj.ans = s;
+                    stateObj.log += `<br><span class="log-purple">Destination Reached! Min Delivery Time: ${s} minutes.</span>`;
+                    newStates.push(stateObj);
+                    break;
+                }
+                
+                let addedAny = false;
+                for(let d of dirs) {
+                    let nr = r + d[0], nc = c + d[1];
+                    let next_b = b - 1;
+                    let next_s = s + 1;
+                    
+                    if (nr>=0 && nr<rows && nc>=0 && nc<cols && grid[nr][nc] !== '1' && grid[nr][nc] !== 'S') {
+                        if (next_b < 0) {
+                            stateObj.log += `<br>&nbsp;&nbsp;→ <span class="log-danger">Failed (${nr}, ${nc})</span>: Battery died (< 0).`;
+                            continue;
+                        }
+                        
+                        let actual_next_b = next_b;
+                        if (grid[nr][nc] === 'C') {
+                            actual_next_b = B;
+                            stateObj.log += `<br>&nbsp;&nbsp;→ <span class="log-warning">Hit Charger at (${nr}, ${nc})! Battery restored to ${B}.</span>`;
+                        }
+                        
+                        let v_key = `${nr},${nc}`;
+                        let highest_seen = visited[v_key] !== undefined ? visited[v_key] : -1;
+                        
+                        if (actual_next_b > highest_seen) {
+                            visited[v_key] = actual_next_b;
+                            q.push({r: nr, c: nc, b: actual_next_b, s: next_s});
+                            stateObj.log += `<br>&nbsp;&nbsp;→ <span class="log-success">Added (${nr}, ${nc})</span> to queue (Battery ${actual_next_b} > prev max ${highest_seen}).`;
+                            addedAny = true;
+                        } else {
+                            stateObj.log += `<br>&nbsp;&nbsp;→ <span class="log-danger">Skipped (${nr}, ${nc})</span>: Arrived with bat ${actual_next_b}, but we already visited it with bat ${highest_seen}. Redundant!`;
+                        }
+                    }
+                }
+                
+                stateObj.queue = [...q];
+                stateObj.visited = {...visited};
+                newStates.push(stateObj);
+            }
+            
+            if (newStates[newStates.length-1].ans === null) {
+                newStates.push({
+                    log: `<span class="log-danger">Queue is empty! Destination unreachable. Return -1.</span>`,
+                    pos: null, visited: {...visited}, queue: [], ans: -1, line: 35
+                });
+            }
+            
+            return newStates;
+        }
+
+        const logContainer = document.getElementById('log');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const gridContainer = document.getElementById('grid-container');
+
+        function renderState(idx) {
+            const state = states[idx];
+            const tc = testCases[currentTc];
+            let rows = tc.grid.length, cols = tc.grid[0].length;
+            
+            document.getElementById('pop-val').innerText = state.pos ? `(${state.pos.r}, ${state.pos.c})` : '-';
+            document.getElementById('bat-val').innerText = state.pos ? state.pos.b : '-';
+            document.getElementById('queue-val').innerText = state.queue.length;
+
+            if (state.pos && state.pos.b <= 1) document.getElementById('bat-val').style.color = 'var(--danger-color)';
+            else if (state.pos && state.pos.b <= 2) document.getElementById('bat-val').style.color = 'var(--warning-color)';
+            else document.getElementById('bat-val').style.color = 'var(--success-color)';
+
+            // Render Grid
+            gridContainer.style.gridTemplateColumns = `repeat(${cols}, 55px)`;
+            gridContainer.innerHTML = '';
+            
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let cellType = tc.grid[r][c];
+                    let cls = `cell cell-${cellType}`;
+                    
+                    if (state.pos && state.pos.r === r && state.pos.c === c) {
+                        cls += ' active';
+                    }
+                    
+                    let v_key = `${r},${c}`;
+                    let v_html = '';
+                    if (state.visited[v_key] !== undefined) {
+                        v_html = `<div class="visited-badge">MaxB: ${state.visited[v_key]}</div>`;
+                        if (!cls.includes('active')) cls += ' visited-flash';
+                    }
+
+                    gridContainer.innerHTML += `
+                        <div class="${cls}">
+                            ${cellType}
+                            <div class="coord">${r},${c}</div>
+                            ${v_html}
+                        </div>
+                    `;
+                }
+            }
+
+            // Highlight Code
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+            if (state.line) {
+                const cEl = document.getElementById(`line-${state.line}`);
+                if(cEl) {
+                    cEl.classList.add('active');
+                    cEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            logContainer.innerHTML += `<div class="log-entry">${state.log}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === states.length - 1;
+        }
+
+        function restartSimulation() {
+            states = generateStatesForGrid(testCases[currentTc]);
+            logContainer.innerHTML = '';
+            currentStateIdx = 0;
+            renderState(currentStateIdx);
+        }
+
+        tcSelect.addEventListener('change', (e) => {
+            currentTc = e.target.value;
+            restartSimulation();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStateIdx < states.length - 1) {
+                currentStateIdx++;
+                renderState(currentStateIdx);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStateIdx > 0) {
+                logContainer.innerHTML = '';
+                currentStateIdx--;
+                for(let i=0; i<=currentStateIdx; i++){
+                    if(i===currentStateIdx) renderState(i);
+                    else logContainer.innerHTML += `<div class="log-entry">${states[i].log}</div>`;
+                }
+            }
+        });
+
+        resetBtn.addEventListener('click', () => restartSimulation());
+
+        // Init
+        renderCodeBlock();
+        restartSimulation();
+
+    </script>
 </body>
 </html>

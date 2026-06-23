@@ -35,7 +35,8 @@ def minDeliveryTime(grid: list[list[str]], B: int) -> int:
     steps = 0
     q = deque()
     destination = None
-    visited = set()
+    visited = {}
+
 
 
     for i in range(rows):
@@ -46,7 +47,7 @@ def minDeliveryTime(grid: list[list[str]], B: int) -> int:
                 destination = (i, j)
             if grid[i][j] == 'S':
                 start = (i,j,B, steps)
-                visited.add((i,j,B, steps))
+                visited[(i,j)] = B
                 q.append(start)
             
 
@@ -65,11 +66,14 @@ def minDeliveryTime(grid: list[list[str]], B: int) -> int:
             next_b = b - 1
             next_s = s + 1
 
-            if 0 <= nx < rows and 0 <= ny < cols and grid[nx][ny] != '1' and grid[nx][ny] != 'S' and (nx, ny, next_b, next_s) not in visited:
+            if 0 <= nx < rows and 0 <= ny < cols and grid[nx][ny] != '1' and grid[nx][ny] != 'S':
                 if next_b < 0: continue
                 if grid[nx][ny] == 'C': next_b = B
-                visited.add((nx, ny, next_b, next_s))
-                q.append((nx, ny, next_b, next_s))
+                
+                # Only explore this cell if we arrive with MORE battery than before
+                if next_b > visited.get((nx, ny), -1):
+                    visited[(nx, ny)] = next_b
+                    q.append((nx, ny, next_b, next_s))
 
     return -1
                 
