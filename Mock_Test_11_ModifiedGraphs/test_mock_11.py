@@ -12,27 +12,29 @@ class TestDeliveryRouting(unittest.TestCase):
         self.assertEqual(minDeliveryTime(grid, 5), 4)
 
     def test_needs_charger(self):
-        # B=2. S -> 0 is 1 step, battery=1. 0 -> C is 1 step, battery=2.
-        # C -> 0 -> D is 2 steps. Total 4 steps.
-        # If we didn't have C, we would run out of battery.
+        # B=4.
+        # S(0,0) -> 0(0,1) -> C(0,2) takes 2 steps. Battery becomes 4.
+        # C(0,2) -> 0(1,2) -> 0(2,2) -> 0(2,1) -> D(2,0) takes 4 steps.
+        # Total 6 steps.
+        # If we didn't have C, we would run out of battery (path is 6 steps, B is 4).
         grid = [
             ['S', '0', 'C'],
             ['1', '1', '0'],
             ['D', '0', '0']
         ]
-        self.assertEqual(minDeliveryTime(grid, 2), 4)
+        self.assertEqual(minDeliveryTime(grid, 4), 6)
 
     def test_revisit_cell(self):
         # THE TWIST: Must revisit a cell.
-        # S(0,0)->(0,1)->C(0,2) recharges. 
-        # Then goes back through (0,1)->(1,1)->(2,1)->D(2,0)
+        # Direct path S to D takes 4 steps. B=3, so you will run out of battery.
+        # You MUST detour into the dead-end to hit C, recharge, and walk back out.
         grid = [
-            ['S', '0', 'C'],
-            ['1', '0', '1'],
-            ['D', '0', '1']
+            ['S', '0', '0', '0', 'D'],
+            ['1', '1', 'C', '1', '1']
         ]
-        # Requires exact management of state to allow revisiting (0,1)
-        self.assertEqual(minDeliveryTime(grid, 4), 6)
+        # Path: S(0,0)->(0,1)->(0,2)->C(1,2) [recharges to 3] -> (0,2) [revisited!] -> (0,3) -> D(0,4)
+        # Total steps: 6
+        self.assertEqual(minDeliveryTime(grid, 3), 6)
 
     def test_impossible(self):
         grid = [

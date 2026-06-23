@@ -29,4 +29,62 @@ from collections import deque
 
 def minDeliveryTime(grid: list[list[str]], B: int) -> int:
     # TODO: Implement your state-space BFS here!
-    pass
+    rows, cols = len(grid), len(grid[0])
+    charging_stations = []
+    start = None
+    steps = 0
+    q = deque()
+    destination = None
+    visited = set()
+
+
+    for i in range(rows):
+        for j in range(cols):
+            if grid[i][j] == 'C':
+                charging_stations.append((i,j))
+            if grid[i][j] == 'D': 
+                destination = (i, j)
+            if grid[i][j] == 'S':
+                start = (i,j,B, steps)
+                visited.add((i,j,B, steps))
+                q.append(start)
+            
+
+
+    directions = [(0,1),(0,-1),(-1,0),(1,0)]
+
+    while q:
+        x, y, b, s = q.popleft()
+      
+      
+        if grid[x][y] == 'D':
+            return s 
+        
+        for dx, dy in directions:
+            nx, ny = dx + x, dy + y
+            next_b = b - 1
+            next_s = s + 1
+
+            if 0 <= nx < rows and 0 <= ny < cols and grid[nx][ny] != '1' and grid[nx][ny] != 'S' and (nx, ny, next_b, next_s) not in visited:
+                if next_b < 0: continue
+                if grid[nx][ny] == 'C': next_b = B
+                visited.add((nx, ny, next_b, next_s))
+                q.append((nx, ny, next_b, next_s))
+
+    return -1
+                
+
+
+
+        
+
+
+
+
+
+
+
+    
+
+    
+    
