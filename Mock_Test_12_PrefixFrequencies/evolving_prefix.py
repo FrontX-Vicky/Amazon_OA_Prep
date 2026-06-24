@@ -9,9 +9,9 @@ count of 'A' and the count of 'B' is EXACTLY `K`.
 
 Example 1:
 s = "AABA", K = 1
-Output: 4
+Output: 6
 Explanation:
-Subarrays with absolute difference 1: "A", "A", "AAB", "ABA"
+Subarrays with absolute difference 1: "A"(0), "AAB"(0-2), "A"(1), "ABA"(1-3), "B"(2), "A"(3)
 
 THE TWIST (Why Sliding Window Fails):
 If the problem asked for "difference <= K", you could easily use a Sliding Window.

@@ -4,8 +4,8 @@ from evolving_prefix import countBalancedSubarrays
 class TestEvolvingPrefix(unittest.TestCase):
     def test_basic(self):
         # "AABA", K = 1.
-        # "A", "A" (from index 1), "AAB", "ABA"
-        self.assertEqual(countBalancedSubarrays("AABA", 1), 4)
+        # "A"(0), "AAB"(0-2), "A"(1), "ABA"(1-3), "B"(2), "A"(3) = 6
+        self.assertEqual(countBalancedSubarrays("AABA", 1), 6)
 
     def test_zero_k(self):
         # K=0 means exactly equal number of A and B
